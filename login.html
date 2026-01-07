@@ -3,6 +3,9 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <meta http-equiv="Pragma" content="no-cache" />
+        <meta http-equiv="Expires" content="0" />
         <link data-n-head="ssr" rel="icon" type="image/x-icon" href="img/favicon.svg" />
         <title>لوحة مؤشرات الأداء - جمعية اعتدال</title>
         <script src="https://cdn.tailwindcss.com"></script>
@@ -452,12 +455,12 @@
                         return;
                     }
 
-                    // حفظ بيانات المستخدم في localStorage
+                    // حفظ بيانات المستخدم في localStorage (تأكد من أن البريد بحروف صغيرة)
                     localStorage.setItem(
                         'userProfile',
                         JSON.stringify({
                             uid: userData.id,
-                            email: userData.email,
+                            email: (userData.email || email_lower).toLowerCase().trim(),
                             department: userData.department || '',
                             name: userData.name || '',
                             role: userData.role || '',

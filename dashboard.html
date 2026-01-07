@@ -4,6 +4,9 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <link rel="icon" type="image/x-icon" href="img/favicon.svg">
     <title>لوحة مؤشرات الأداء - جمعية اعتدال</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
@@ -1292,8 +1295,8 @@ const firebaseConfig = {
                 startDashboard(userData);
             }
         } else {
-            localStorage.clear(); sessionStorage.clear();
-            window.location.href = "login.html";
+            // localStorage.clear(); sessionStorage.clear();
+            // window.location.href = "login.html";
         }
     });
 
