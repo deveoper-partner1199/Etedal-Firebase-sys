@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link data-n-head="ssr" rel="icon" type="image/x-icon" href="img/favicon.svg" />
+        <title>لوحة مؤشرات الأداء - جمعية اعتدال</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            main: {
+                                DEFAULT: '#6cb499',
+                                dark: '#03866d',
+                                accent: '#baa88d',
+                                txt: '#5b6670',
+                            },
+                        },
+                    },
+                },
+            };
+        </script>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+        <style>
+            body {
+                font-family: 'Tajawal', sans-serif;
+                background: #f8faf9;
+            }
+            .login-container {
+                background: #fff;
+                box-shadow: 0 8px 36px rgba(108, 180, 153, 0.09);
+                animation: fadeIn 0.8s;
+            }
+            .input-field {
+                border: 1.5px solid #eee;
+                background: #f8faf9;
+                transition: all 0.2s;
+            }
+            .input-field:focus {
+                border-color: #6cb499;
+                box-shadow: 0 0 0 2px #6cb49933;
+                background: #fff;
+            }
+            .btn-main {
+                background: linear-gradient(90deg, #6cb499, #03866d);
+                color: #fff;
+                font-weight: 600;
+                transition: all 0.25s;
+                box-shadow: 0 2px 12px #6cb49922;
+            }
+            .btn-main:hover {
+                filter: brightness(1.1);
+            }
+            #messageBox {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #03866d;
+                color: #fff;
+                padding: 15px 28px;
+                border-radius: 10px;
+                box-shadow: 0 4px 14px #6cb49925;
+                z-index: 1000;
+                display: none;
+                opacity: 0;
+                transition: opacity 0.3s, transform 0.3s;
+                transform: translateY(-35px);
+            }
+            #messageBox.show {
+                display: block;
+                opacity: 1;
+                transform: translateY(0);
+            }
+            #messageBox.error {
+                background: #e35454;
+            }
+            #loadingOverlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(255, 255, 255, 0.92);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.2s;
+            }
+            #loadingOverlay.show {
+                opacity: 1;
+                pointer-events: auto;
+            }
+            .spinner {
+                border: 6px solid #6cb49922;
+                border-top: 6px solid #03866d;
+                border-radius: 50%;
+                width: 54px;
+                height: 54px;
+                animation: spin 1s linear infinite;
+            }
+            @keyframes spin {
+                0% {
+                    transform: rotate(0deg);
+                }
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+            .feature-card {
+                background: rgba(255, 255, 255, 0.12);
+                border: 1.5px solid #6cb49917;
+                box-shadow: 0 8px 24px #6cb4990d;
+                backdrop-filter: blur(4px);
+                transition: all 0.22s;
+            }
+            .feature-card:hover {
+                background: rgba(108, 180, 153, 0.1);
+                transform: translateY(-4px) scale(1.03);
+                box-shadow: 0 12px 32px #6cb4991a;
+            }
+            .glass-effect {
+                background: rgba(108, 180, 153, 0.13);
+                backdrop-filter: blur(7px);
+                border: 1px solid #baa88d44;
+            }
+            .remember-me {
+                accent-color: #6cb499;
+            }
+            .forgot-pass:hover {
+                color: #03866d;
+                text-decoration: underline;
+            }
+        </style>
+    </head>
+    <body class="bg-[#f8faf9]">
+        <div id="messageBox"></div>
+        <div id="loadingOverlay">
+            <div class="flex flex-col items-center">
+                <div class="spinner"></div>
+                <div class="mt-4 text-[#03866d] font-semibold">جاري التحميل...</div>
+            </div>
+        </div>
+
+        <div class="min-h-screen flex flex-col lg:flex-row">
+            <!-- Right Section - Login Form -->
+            <div class="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12">
+                <div class="login-container w-full max-w-md p-8 lg:p-10 rounded-2xl">
+                    <div class="text-center mb-8">
+                        <div
+                            class="mx-auto h-20 w-44 p-3 rounded-2xl flex items-center justify-center mb-5 animate__animated animate__fadeInDown shadow-md"
+                        >
+                            <img src="https://etedal.org.sa/_nuxt/img/logo-gray.cd135a0.svg" />
+                        </div>
+                        <h1 class="text-2xl font-bold text-[#03866d] mb-2">مرحبًا بك</h1>
+                        <p class="text-[#5b6670]">في منصّة اعتدال لإدارة الأهداف الاستراتيجيّة</p>
+                    </div>
+                    <form id="loginForm" class="space-y-5">
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-[#5b6670] mb-2"
+                                >البريد الإلكتروني</label
+                            >
+                            <div class="relative">
+                                <div
+                                    class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-[#baa88d]"
+                                >
+                                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                            d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"
+                                        ></path>
+                                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path>
+                                    </svg>
+                                </div>
+                                <input
+                                    type="email"
+                                    id="email"
+                                    required
+                                    class="w-full px-4 pr-10 py-3 rounded-lg input-field focus:ring-main focus:ring-2 focus:ring-opacity-50"
+                                    placeholder="ادخل بريدك الإلكتروني"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label for="password" class="block text-sm font-medium text-[#5b6670] mb-2"
+                                >كلمة المرور</label
+                            >
+                            <div class="relative">
+                                <div
+                                    class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-[#baa88d]"
+                                >
+                                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                            fill-rule="evenodd"
+                                            d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                                            clip-rule="evenodd"
+                                        ></path>
+                                    </svg>
+                                </div>
+                                <input
+                                    type="password"
+                                    id="password"
+                                    required
+                                    class="w-full px-4 pr-10 py-3 rounded-lg input-field focus:ring-main focus:ring-2 focus:ring-opacity-50"
+                                    placeholder="ادخل كلمة المرور"
+                                />
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <input
+                                    id="remember-me"
+                                    name="remember-me"
+                                    type="checkbox"
+                                    class="h-4 w-4 remember-me border-[#baa88d] rounded"
+                                />
+                                <label for="remember-me" class="mr-2 block text-sm text-[#5b6670]">تذكرني</label>
+                            </div>
+                            <div class="text-sm">
+                                <!-- <a href="#" class="font-medium text-main hover:text-[#03866d] forgot-pass">نسيت كلمة المرور؟</a> -->
+                            </div>
+                        </div>
+                        <div>
+                            <button
+                                type="submit"
+                                class="btn-main w-full flex justify-center py-3 px-4 rounded-lg text-lg font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-main shadow-md hover:shadow-lg transition-all"
+                            >
+                                تسجيل الدخول
+                                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+                                    ></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Left Section - Hero (for large screens) -->
+            <div
+                class="hero-section w-full lg:w-1/2 p-12 text-white flex flex-col justify-center relative hidden lg:flex bg-gradient-to-br from-[#6cb499] to-[#03866d]"
+            >
+                <div class="relative z-10 max-w-2xl mx-auto">
+                    <div class="mb-12 animate__animated animate__fadeIn">
+                        <div
+                            class="h-24 w-24 bg-white/10 glass-effect rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg"
+                        >
+                            <svg class="h-12 w-12 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"
+                                ></path>
+                            </svg>
+                        </div>
+                        <h1 class="text-4xl font-bold text-center mb-4 leading-tight">
+                            منصّة اعتدال لإدارة الأهداف الاستراتيجيّة
+                        </h1>
+                        <p class="text-xl text-center opacity-90 max-w-lg mx-auto">
+                            أداة شاملة تمكِّن فريق عمل جمعية اعتدال من التخطيط الاستراتيجي وقياس أثر حفظ النعمة
+                        </p>
+                    </div>
+                    <div
+                        class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12 animate__animated animate__fadeIn animate__delay-1s"
+                    >
+                        <div class="feature-card p-6 rounded-xl">
+                            <div class="flex items-start mb-3">
+                                <div class="bg-white/20 p-2 rounded-lg ml-4">
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        ></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-lg mb-1">متابعة المؤشرات</h3>
+                                    <p class="text-sm opacity-80">تابع تقدم أهدافك بسهولة مع لوحات تحكم تفاعلية</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="feature-card p-6 rounded-xl">
+                            <div class="flex items-start mb-3">
+                                <div class="bg-white/20 p-2 rounded-lg ml-4">
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M13 10V3L4 14h7v7l9-11h-7z"
+                                        ></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-lg mb-1">لوحات قياس ذكية</h3>
+                                    <p class="text-sm opacity-80">رؤى فوريّة لمؤشرات أداء حفظ النعمة</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="feature-card p-6 rounded-xl">
+                            <div class="flex items-start mb-3">
+                                <div class="bg-white/20 p-2 rounded-lg ml-4">
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                        ></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-lg mb-1">أمان متكامل</h3>
+                                    <p class="text-sm opacity-80">بياناتك محمية بأعلى معايير الأمان والخصوصية</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="feature-card p-6 rounded-xl">
+                            <div class="flex items-start mb-3">
+                                <div class="bg-white/20 p-2 rounded-lg ml-4">
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                                        ></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-lg mb-1">عمل تشاركي</h3>
+                                    <p class="text-sm opacity-80">تعاون مع فريقك لتحقيق الأهداف المشتركة بسهولة</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-16 text-center animate__animated animate__fadeIn animate__delay-2s">
+                        <div class="inline-flex items-center bg-white/10 glass-effect px-6 py-3 rounded-full">
+                            <svg class="h-5 w-5 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                                ></path>
+                            </svg>
+                            <p class="text-lg font-medium opacity-90">
+                                "معًا لتحقيق رؤيتنا في حفظ النعمة بالاستراتيجيات الفعّالة"
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script type="module">
+            import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js';
+            import {
+                getFirestore,
+                collection,
+                query,
+                where,
+                getDocs,
+                doc,
+                getDoc,
+            } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js';
+
+            // Firebase configuration
+            const firebaseConfig = {
+  apiKey: "AIzaSyCpGFGcxtoOt_XogdT-pS1dgxObBegqjS8",
+  authDomain: "e3tdal-32d54.firebaseapp.com",
+  projectId: "e3tdal-32d54",
+  storageBucket: "e3tdal-32d54.firebasestorage.app",
+  messagingSenderId: "217166225784",
+  appId: "1:217166225784:web:76e876779139f94438a88d",
+  measurementId: "G-YFDH35V8W5"
+};
+
+            // Initialize Firebase
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+
+            // DOM Elements
+            const loginForm = document.getElementById('loginForm');
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const messageBox = document.getElementById('messageBox');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+
+            function showLoading(show) {
+                if (show) loadingOverlay.classList.add('show');
+                else loadingOverlay.classList.remove('show');
+            }
+
+            function showMessage(message, type = 'success') {
+                messageBox.textContent = message;
+                messageBox.className = 'show' + (type === 'error' ? ' error' : '');
+                setTimeout(() => {
+                    messageBox.classList.remove('show');
+                }, 4000);
+            }
+
+            // ✅ تسجيل الدخول من Firestore مباشرة
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                showLoading(true);
+
+                const email = emailInput.value.trim();
+                const password = passwordInput.value.trim();
+
+                try {
+                    if (!email || !password) {
+                        showMessage('يرجى إدخال البريد وكلمة المرور', 'error');
+                        showLoading(false);
+                        return;
+                    }
+
+                    const email_lower = email.toLowerCase();
+                    console.log(email_lower);
+                    // استعلام للبحث عن المستخدم بالبريد
+                    //const q = query(collection(db, "users"), where("email", "==", email));
+                    const q = query(collection(db, 'users'), where('email', '==', email_lower));
+
+                    const snapshot = await getDocs(q);
+
+                    if (snapshot.empty) {
+                        showMessage('لا يوجد مستخدم بهذا البريد الإلكتروني', 'error');
+                        return;
+                    }
+
+                    let userData = null;
+
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        if (data.password === password) {
+                            userData = { id: doc.id, ...data };
+                        }
+                    });
+
+                    if (!userData) {
+                        showMessage('كلمة المرور غير صحيحة', 'error');
+                        return;
+                    }
+
+                    // حفظ بيانات المستخدم في localStorage
+                    localStorage.setItem(
+                        'userProfile',
+                        JSON.stringify({
+                            uid: userData.id,
+                            email: userData.email,
+                            department: userData.department || '',
+                            name: userData.name || '',
+                            role: userData.role || '',
+                        })
+                    );
+
+                    showMessage('تم تسجيل الدخول بنجاح، جاري التوجيه...');
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1200);
+                } catch (error) {
+                    console.error('Firebase Firestore Login Error:', error);
+                    showMessage('فشل تسجيل الدخول. الرجاء المحاولة لاحقًا', 'error');
+                } finally {
+                    showLoading(false);
+                }
+            });
+        </script>
+    </body>
+</html>

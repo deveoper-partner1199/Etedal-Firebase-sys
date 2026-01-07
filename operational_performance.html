@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="img/favicon.svg">
+    <title>لوحة الأداء التشغيلي - جمعية اعتدال</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            /* Light Theme */
+            --color-primary: #3b82f6;      /* Blue 500 */
+            --color-primary-light: #eff6ff; /* Blue 50 */
+            --color-secondary: #10b981;    /* Emerald 500 */
+            --color-bg: #f9fafb;           /* Gray 50 */
+            --color-card-bg: #ffffff;
+            --color-text-default: #1f2937; /* Gray 800 */
+            --color-text-muted: #6b7280;   /* Gray 500 */
+            --color-border: #e5e7eb;       /* Gray 200 */
+        }
+
+        .dark {
+            /* Dark Theme */
+            --color-primary: #60a5fa;      /* Blue 400 */
+            --color-primary-light: rgba(59, 130, 246, 0.1);
+            --color-secondary: #34d399;    /* Emerald 400 */
+            --color-bg: #111827;           /* Gray 900 */
+            --color-card-bg: #1f2937;      /* Gray 800 */
+            --color-text-default: #f9fafb; /* Gray 50 */
+            --color-text-muted: #9ca3af;   /* Gray 400 */
+            --color-border: #374151;       /* Gray 700 */
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text-default);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        header.main-header {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .dark header.main-header {
+            background-color: rgba(31, 41, 55, 0.8);
+        }
+
+        .dashboard-card {
+            transition: all 0.2s ease-in-out;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.07);
+        }
+
+        .dark .dashboard-card:hover {
+             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Choices.js Dark Mode Customization */
+        .dark .choices__inner {
+            background-color: var(--color-card-bg);
+            border-color: var(--color-border);
+        }
+        .dark .choices__input {
+            background-color: var(--color-card-bg) !important;
+            color: var(--color-text-default) !important;
+        }
+        .dark .choices__list--single .choices__item {
+            color: var(--color-text-default);
+        }
+        .dark .choices__list--dropdown {
+            background-color: var(--color-card-bg);
+            border-color: var(--color-border);
+        }
+        .dark .choices__list--dropdown .choices__item {
+            color: var(--color-text-default);
+        }
+        .dark .choices__list--dropdown .choices__item--selectable.is-highlighted {
+            background-color: #374151;
+        }
+        .dark .choices__list--multiple .choices__item {
+            background-color: var(--color-primary);
+            border: 1px solid var(--color-primary);
+        }
+
+        /* Custom Scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+        .dark .custom-scroll::-webkit-scrollbar-thumb { background: #4b5563; }
+
+        /* Theme Toggle CSS */
+        .theme-toggle { cursor: pointer; width: 50px; height: 25px; background-color: #e5e7eb; border-radius: 9999px; position: relative; transition: background-color 0.3s ease; }
+        .dark .theme-toggle { background-color: #374151; }
+        .theme-toggle-handle { position: absolute; top: 2px; left: 2px; width: 21px; height: 21px; background-color: white; border-radius: 50%; transition: transform 0.3s ease; display: flex; align-items: center; justify-content: center; }
+        .dark .theme-toggle-handle { transform: translateX(25px); background-color: #4b5563; }
+        .theme-toggle-icon { font-size: 14px; color: #6b7280; }
+        .dark .theme-toggle-icon { color: #d1d5db; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+
+        @keyframes slideInUp { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        .slide-in-up { animation: slideInUp 0.5s ease-out forwards; }
+    </style>
+    <script>
+        (function() {
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        })();
+    </script>
+</head>
+
+<body class="min-h-screen">
+    <main class="flex-1 flex flex-col min-h-screen relative transition-colors duration-200">
+        <header class="main-header flex items-center justify-between px-6 py-4 sticky top-0 z-30">
+            <div class="text-xl md:text-2xl font-bold text-[var(--color-primary)] flex items-center gap-3">
+                <i class="fa-solid fa-list-check"></i>
+                <span>لوحة الأداء التشغيلي</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="index.html" class="flex items-center gap-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors font-semibold">
+                    <i class="fa fa-arrow-right"></i>
+                    <span>العودة للوحة الرئيسية</span>
+                </a>
+                <div class="theme-toggle" id="themeToggle">
+                    <div class="theme-toggle-handle">
+                         <i id="theme-icon" class="fa-solid fa-sun theme-toggle-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="p-4 md:p-6">
+            <section class="p-4 bg-[var(--color-primary-light)] rounded-xl shadow-sm border border-[var(--color-border)]">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <label class="block text-sm font-bold mb-1 text-[var(--color-text-muted)]">السنة</label>
+                        <select id="yearFilter" multiple></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-1 text-[var(--color-text-muted)]">الربع</label>
+                        <select id="quarterFilter" multiple></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-1 text-[var(--color-text-muted)]">الشهر</label>
+                        <select id="monthFilter" multiple></select>
+                    </div>
+                    <div class="lg:col-span-1">
+                        <label class="block text-sm font-bold mb-1 text-[var(--color-text-muted)]">الإدارة</label>
+                        <select id="deptFilter" multiple></select>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <section class="flex-1 px-4 md:px-6 pb-6">
+            <div id="loading" class="text-center p-10 text-[var(--color-text-muted)]">جاري تحميل البيانات...</div>
+            <div id="dashboardGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            </div>
+            <div id="noData" class="hidden text-center p-10 bg-[var(--color-card-bg)] rounded-xl shadow-sm">
+                <i class="fa fa-search fa-2x mb-3 text-[var(--color-text-muted)]"></i>
+                <p>لا توجد أهداف تطابق الفلاتر المحددة.</p>
+            </div>
+        </section>
+
+        <div id="comparisonModal" class="fixed inset-0 bg-black bg-opacity-60 items-center justify-center p-4 z-50 transition-opacity hidden" style="display:none;">
+            <div class="bg-[var(--color-card-bg)] m-auto rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col slide-in-up">
+                <div class="flex justify-between items-center p-4 border-b border-[var(--color-border)]">
+                    <h3 id="modalTitle" class="text-lg font-bold text-[var(--color-primary)]"></h3>
+                    <button id="closeModalBtn" class="text-3xl font-light hover:text-red-500 transition">&times;</button>
+                </div>
+                <div id="modalContentContainer" class="p-4 md:p-6 overflow-y-auto custom-scrollbar">
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCpGFGcxtoOt_XogdT-pS1dgxObBegqjS8",
+  authDomain: "e3tdal-32d54.firebaseapp.com",
+  projectId: "e3tdal-32d54",
+  storageBucket: "e3tdal-32d54.firebasestorage.app",
+  messagingSenderId: "217166225784",
+  appId: "1:217166225784:web:76e876779139f94438a88d",
+  measurementId: "G-YFDH35V8W5"
+};
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let allGoals = [], departmentsMap = {}, achievementValueTypesMap = {};
+        let currentYear, currentWeek;
+        let yearChoices, quarterChoices, monthChoices, deptChoices;
+        let isInitialLoad = true;
+        let comparisonModal, modalTitle, closeModalBtn, modalContentContainer, comparisonChart = null, modalWeekChoices = null;
+        let weeklyNavigators = {};
+
+        const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+        if (!userProfile || !userProfile.email) window.location.href = "login.html";
+
+        function getWeekNumber(d) {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+
+        function setTheme(isDark) {
+            const themeIcon = document.getElementById('theme-icon');
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+                themeIcon.className = "fa-solid fa-moon theme-toggle-icon";
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeIcon.className = "fa-solid fa-sun theme-toggle-icon";
+                localStorage.setItem('theme', 'light');
+            }
+            updateChartTheme();
+        }
+        
+        function setupThemeToggle() {
+            const themeToggle = document.getElementById('themeToggle');
+            const isDark = document.documentElement.classList.contains('dark');
+            setTheme(isDark);
+            themeToggle.addEventListener('click', () => {
+                const isCurrentlyDark = document.documentElement.classList.contains('dark');
+                setTheme(!isCurrentlyDark);
+            });
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('dashboardGrid').classList.add('hidden');
+            document.getElementById('noData').classList.add('hidden');
+        }
+
+        function hideLoading(showNoData = false) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboardGrid').classList.toggle('hidden', showNoData);
+            document.getElementById('noData').classList.toggle('hidden', !showNoData);
+        }
+
+        async function fetchData() {
+            const [goalsSnapshot, deptsSnapshot, typesSnapshot] = await Promise.all([
+                db.collection('operationalGoals').where('displayOptions', 'array-contains', 'operational').get(),
+                db.collection('departments').get(),
+                db.collection('achievementValueTypes').get()
+            ]);
+            deptsSnapshot.forEach(doc => { departmentsMap[doc.id] = doc.data().name; });
+            typesSnapshot.forEach(doc => { achievementValueTypesMap[doc.id] = doc.data().name; });
+            allGoals = goalsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        }
+
+        function setupFilters() {
+            const commonChoicesConfig = { removeItemButton: true, itemSelectText: '', allowHTML: true };
+            const els = { year: 'yearFilter', quarter: 'quarterFilter', month: 'monthFilter', dept: 'deptFilter' };
+            
+            const yearEl = document.getElementById(els.year);
+            const quarterEl = document.getElementById(els.quarter);
+            const monthEl = document.getElementById(els.month);
+            const deptEl = document.getElementById(els.dept);
+
+            const years = [...new Set(allGoals.flatMap(g => (g.progress || []).map(p => p.year)))].sort((a, b) => b - a);
+            yearEl.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+            quarterEl.innerHTML = ['Q1', 'Q2', 'Q3', 'Q4'].map(q => `<option value="${q}">الربع ${q.replace('Q','')}</option>`).join('');
+            monthEl.innerHTML = Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">شهر ${i + 1}</option>`).join('');
+            deptEl.innerHTML = Object.entries(departmentsMap).map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+
+            yearChoices = new Choices(yearEl, { ...commonChoicesConfig, placeholder: true, placeholderValue: 'جميع السنوات' });
+            quarterChoices = new Choices(quarterEl, { ...commonChoicesConfig, placeholder: true, placeholderValue: 'جميع الأرباع' });
+            monthChoices = new Choices(monthEl, { ...commonChoicesConfig, placeholder: true, placeholderValue: 'جميع الشهور' });
+            deptChoices = new Choices(deptEl, { ...commonChoicesConfig, placeholder: true, placeholderValue: 'جميع الإدارات' });
+
+            [yearChoices, quarterChoices, monthChoices, deptChoices].forEach(c => {
+                if (c) c.passedElement.element.addEventListener('change', () => { isInitialLoad = false; renderDashboard(); }, false);
+            });
+        }
+        
+        function getWeekOffset(q) { return { 'Q1': 0, 'Q2': 13, 'Q3': 26, 'Q4': 39 }[q] || 0; }
+
+        function renderDashboard() {
+            showLoading();
+            const s = {
+                years: yearChoices.getValue(true).map(Number),
+                quarters: quarterChoices.getValue(true),
+                months: monthChoices.getValue(true).map(Number),
+                depts: deptChoices.getValue(true)
+            };
+
+            const filteredGoals = allGoals.filter(goal => s.depts.length === 0 || s.depts.includes(goal.departmentId));
+            const gridContainer = document.getElementById('dashboardGrid');
+            gridContainer.innerHTML = '';
+            weeklyNavigators = {};
+            let goalsRendered = 0;
+
+            filteredGoals.forEach((goal, index) => {
+                let weeksForCard = [], weeksForModal = [];
+
+                (goal.progress || []).forEach(period => {
+                    (period.weeks || []).forEach(week => {
+                        const aWeek = week.week + getWeekOffset(period.quarter);
+                        const month = Math.floor((aWeek - 1) / 4.34) + 1;
+                        const payload = { id: `${goal.id}-${period.year}-${period.quarter}-${week.week}`, weekNumber: aWeek, achieved: Number(week.achieved || 0), year: Number(period.year) };
+                        
+                        let shouldDisplay = (isInitialLoad && payload.year === currentYear) || (!isInitialLoad && (s.years.length === 0 || s.years.includes(payload.year)) && (s.quarters.length === 0 || s.quarters.includes(period.quarter)) && (s.months.length === 0 || s.months.includes(month)));
+                        
+                        if (shouldDisplay) {
+                            weeksForModal.push(payload);
+                            weeksForCard.push(payload);
+                        }
+                    });
+                });
+
+                if (weeksForCard.length === 0) return;
+                goalsRendered++;
+
+                const overallTotalAchieved = (goal.progress || []).flatMap(p => p.weeks || []).reduce((sum, week) => sum + Number(week.achieved || 0), 0);
+                const firstProgressForType = (goal.progress || [])[0];
+                const achievedTypeName = firstProgressForType ? (achievementValueTypesMap[firstProgressForType.achievedTypeId] || firstProgressForType.achievedType || '') : '';
+
+                const card = document.createElement('div');
+                card.className = 'dashboard-card fade-in bg-[var(--color-card-bg)] rounded-2xl shadow-sm border border-[var(--color-border)] p-5 flex flex-col';
+                card.style.animationDelay = `${index * 50}ms`;
+
+                const sortedWeeks = weeksForCard.sort((a, b) => b.year - a.year || b.weekNumber - a.weekNumber);
+                const currentWeekIndex = sortedWeeks.findIndex(w => w.year === currentYear && w.weekNumber === currentWeek);
+                const initialIndex = currentWeekIndex !== -1 ? currentWeekIndex : 0;
+                
+                weeklyNavigators[goal.id] = { weeks: sortedWeeks, currentIndex: initialIndex };
+                const initialWeek = sortedWeeks[initialIndex];
+
+                const weekListItems = sortedWeeks.map((week, idx) => {
+                    const isCurrent = (week.year === currentYear && week.weekNumber === currentWeek);
+                    return `<li><button onclick="jumpToWeek('${goal.id}', ${idx})" class="w-full text-right px-4 py-2 text-sm hover:bg-[var(--color-bg)] transition-colors">الأسبوع ${week.weekNumber} (${week.year})${isCurrent ? ' <span class="text-xs font-bold text-[var(--color-primary)]">(الحالي)</span>' : ''} - <strong class="font-bold text-[var(--color-secondary)]">${week.achieved.toLocaleString()}</strong></button></li>`;
+                }).join('');
+
+                const isInitialWeekCurrent = (initialWeek.year === currentYear && initialWeek.weekNumber === currentWeek);
+                const weekNavigatorHTML = `<div class="week-navigator-container mt-auto relative"><div id="week-list-${goal.id}" class="absolute bottom-full mb-2 w-full bg-[var(--color-card-bg)] border border-[var(--color-border)] rounded-lg shadow-xl z-10 hidden max-h-48 overflow-y-auto custom-scroll"><ul>${weekListItems}</ul></div><div class="week-navigator flex items-center justify-between p-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg)]"><button id="prev-btn-${goal.id}" onclick="navigateWeek('${goal.id}', 1)" class="week-nav-btn" ${initialIndex >= sortedWeeks.length - 1 ? 'disabled' : ''}><i class="fa fa-chevron-right text-[var(--color-text-muted)]"></i></button><div id="week-display-${goal.id}" onclick="toggleWeekList('${goal.id}')" class="text-center flex-1 px-2 cursor-pointer select-none"><div class="text-sm font-semibold text-[var(--color-text-muted)]">الأسبوع ${initialWeek.weekNumber} (${initialWeek.year})${isInitialWeekCurrent ? ' <span class="text-xs">(الحالي)</span>' : ''}</div><div class="font-extrabold text-2xl text-[var(--color-primary)]">${initialWeek.achieved.toLocaleString()}</div></div><button id="next-btn-${goal.id}" onclick="navigateWeek('${goal.id}', -1)" class="week-nav-btn" ${initialIndex === 0 ? 'disabled' : ''}><i class="fa fa-chevron-left text-[var(--color-text-muted)]"></i></button></div></div>`;
+                
+                const modalDataString = JSON.stringify(weeksForModal);
+                card.innerHTML = `
+                    <div class="flex-grow flex flex-col">
+                        <div class="flex items-start gap-4">
+                            <div class="flex-shrink-0 h-12 w-12 rounded-full flex items-center justify-center bg-[var(--color-primary-light)]">
+                                <i class="fa-solid ${goal.icon || 'fa-tasks'} text-2xl text-[var(--color-primary)]"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-bold text-[var(--color-text-default)]" title="${goal.goal}">${goal.goal}</h3>
+                                ${goal.indicator ? `<p class="mt-2"><span class="inline-block bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 text-xs font-medium px-2 py-1 rounded-md">${goal.indicator}</span></p>` : ''}
+                                <p class="mt-2">
+                                    <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">${departmentsMap[goal.departmentId] || 'غير محدد'}</span>
+                                </p>
+                            </div>
+                            <div>
+                                <button title="تحليل الأسابيع" onclick='openComparisonModal(${JSON.stringify(goal.goal)}, ${modalDataString})' class="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[var(--color-bg)] text-[var(--color-text-muted)] transition-colors">
+                                    <i class="fa-solid fa-chart-line"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex-grow flex flex-col justify-center items-center text-center my-4">
+                            <p class="text-5xl font-extrabold text-[var(--color-text-default)]">${overallTotalAchieved.toLocaleString()}</p>
+                            <p class="mt-1 text-base font-medium text-[var(--color-text-muted)]">${achievedTypeName}</p>
+                        </div>
+                    </div>
+                    ${weekNavigatorHTML}`;
+                gridContainer.appendChild(card);
+            });
+            hideLoading(goalsRendered === 0);
+        }
+        
+        function updateNavigatorDisplay(goalId) {
+            const navigator = weeklyNavigators[goalId];
+            if (!navigator) return;
+            const { weeks, currentIndex } = navigator;
+            const currentWeekData = weeks[currentIndex];
+            const displayEl = document.getElementById(`week-display-${goalId}`);
+            if (displayEl) {
+                const isCurrent = (currentWeekData.year === currentYear && currentWeekData.weekNumber === currentWeek);
+                displayEl.innerHTML = `<div class="text-sm font-semibold text-[var(--color-text-muted)]">الأسبوع ${currentWeekData.weekNumber} (${currentWeekData.year})${isCurrent ? ' <span class="text-xs">(الحالي)</span>' : ''}</div><div class="font-extrabold text-2xl text-[var(--color-primary)]">${currentWeekData.achieved.toLocaleString()}</div>`;
+            }
+            document.getElementById(`prev-btn-${goalId}`).disabled = (currentIndex >= weeks.length - 1);
+            document.getElementById(`next-btn-${goalId}`).disabled = (currentIndex === 0);
+        }
+
+        function navigateWeek(goalId, direction) {
+            const navigator = weeklyNavigators[goalId];
+            const newIndex = navigator.currentIndex + direction;
+            if (newIndex >= 0 && newIndex < navigator.weeks.length) {
+                navigator.currentIndex = newIndex;
+                updateNavigatorDisplay(goalId);
+            }
+        }
+
+        function jumpToWeek(goalId, index) {
+            weeklyNavigators[goalId].currentIndex = index;
+            updateNavigatorDisplay(goalId);
+            document.getElementById(`week-list-${goalId}`).classList.add('hidden');
+        }
+
+        function toggleWeekList(goalId) {
+            const listEl = document.getElementById(`week-list-${goalId}`);
+            const isHidden = listEl.classList.contains('hidden');
+            document.querySelectorAll('[id^="week-list-"]').forEach(el => el.classList.add('hidden'));
+            if (isHidden) listEl.classList.remove('hidden');
+        }
+
+        function setupModal() {
+            comparisonModal = document.getElementById('comparisonModal');
+            modalTitle = document.getElementById('modalTitle');
+            closeModalBtn = document.getElementById('closeModalBtn');
+            modalContentContainer = document.getElementById('modalContentContainer');
+            closeModalBtn.addEventListener('click', closeComparisonModal);
+            comparisonModal.addEventListener('click', (e) => { if (e.target === comparisonModal) closeComparisonModal(); });
+        }
+
+        function openComparisonModal(goalName, allWeeksData) {
+            modalTitle.textContent = `مقارنة أداء الأسابيع لـ: ${goalName}`;
+            modalContentContainer.innerHTML = `<div class="mb-6 p-4 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)]"><label class="block text-sm font-bold mb-2">اختر أسابيع للمقارنة:</label><select id="modalWeekSelector" multiple></select></div><div id="modalChartContainer"></div>`;
+            
+            const weekSelector = document.getElementById('modalWeekSelector');
+            const sortedWeeks = allWeeksData.sort((a, b) => a.year - b.year || a.weekNumber - b.weekNumber);
+            sortedWeeks.forEach(w => weekSelector.add(new Option(`الأسبوع ${w.weekNumber} (${w.year})`, w.id)));
+            
+            if (modalWeekChoices) modalWeekChoices.destroy();
+            modalWeekChoices = new Choices(weekSelector, { removeItemButton: true, itemSelectText: '', placeholder: true, placeholderValue: 'اختر أسابيع (الكل افتراضياً)' });
+            weekSelector.addEventListener('change', () => {
+                const selectedWeekIds = modalWeekChoices.getValue(true);
+                const weeksToRender = selectedWeekIds.length === 0 ? sortedWeeks : sortedWeeks.filter(w => selectedWeekIds.includes(w.id));
+                renderModalChart(weeksToRender);
+            });
+
+            renderModalChart(sortedWeeks);
+            comparisonModal.style.display = 'flex';
+        }
+
+        function closeComparisonModal() {
+            comparisonModal.style.display = 'none';
+            if (comparisonChart) { comparisonChart.destroy(); comparisonChart = null; }
+        }
+
+        function updateChartTheme() {
+            if (!comparisonChart) return;
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? '#374151' : '#e5e7eb';
+            const textColor = isDark ? '#f9fafb' : '#1f2937';
+            comparisonChart.options.scales.y.grid.color = gridColor;
+            comparisonChart.options.scales.y.ticks.color = textColor;
+            comparisonChart.options.scales.x.ticks.color = textColor;
+            comparisonChart.update();
+        }
+
+        function renderModalChart(weeksToRender) {
+            const container = document.getElementById('modalChartContainer');
+            if (comparisonChart) comparisonChart.destroy();
+            container.innerHTML = (!weeksToRender || weeksToRender.length === 0) ? `<div class="text-center p-8 text-[var(--color-text-muted)]">لا توجد بيانات تطابق اختيارك لعرضها.</div>` : `<div style="height: 400px;"><canvas id="comparisonChartCanvas"></canvas></div>`;
+            if (!weeksToRender || weeksToRender.length === 0) return;
+
+            const computedStyle = getComputedStyle(document.documentElement);
+            const primaryColor = computedStyle.getPropertyValue('--color-primary').trim();
+            const gridColor = computedStyle.getPropertyValue('--color-border').trim();
+            const textColor = computedStyle.getPropertyValue('--color-text-default').trim();
+            
+            const ctx = document.getElementById('comparisonChartCanvas').getContext('2d');
+            comparisonChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: weeksToRender.map(w => `أسبوع ${w.weekNumber} (${w.year})`),
+                    datasets: [{ label: 'الإنجاز', data: weeksToRender.map(w => w.achieved), backgroundColor: `${primaryColor}99`, borderColor: primaryColor, borderWidth: 1, borderRadius: 5 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { rtl: true, titleFont: { family: 'Cairo' }, bodyFont: { family: 'Cairo' }, callbacks: { label: c => `${c.dataset.label || ''}: ${c.parsed.y.toLocaleString()}` } }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor, font: { family: 'Cairo' } } },
+                        x: { grid: { display: false }, ticks: { color: textColor, font: { family: 'Cairo' } } }
+                    }
+                }
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            const today = new Date();
+            currentYear = today.getFullYear();
+            currentWeek = getWeekNumber(today);
+            setupThemeToggle();
+            showLoading();
+            setupModal();
+            await fetchData();
+            setupFilters();
+            renderDashboard();
+            hideLoading();
+            isInitialLoad = false;
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.week-navigator-container')) {
+                    document.querySelectorAll('[id^="week-list-"]').forEach(el => el.classList.add('hidden'));
+                }
+            });
+        });
+
+    </script>
+</body>
+
+</html>

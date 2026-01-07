@@ -1,0 +1,1866 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link data-n-head="ssr" rel="icon" type="image/x-icon" href="img/favicon.svg">
+  <title>لوحة مؤشرات الأداء</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['"Cairo"', 'sans-serif'] },
+          colors: {
+            primary: '#334155',
+            secondary: '#2563eb',
+            accent: '#10b981',
+            warning: '#f59e0b',
+            error: '#ef4444',
+            background: '#f8fafc',
+            card: '#ffffff',
+            darkblue: '#1e40af',
+            teal: '#0d9488',
+            purple: '#7c3aed',
+            dark: {
+              primary: '#e2e8f0',
+              secondary: '#60a5fa',
+              accent: '#34d399',
+              background: '#1e293b',
+              card: '#1e293b',
+              text: '#f8fafc',
+              border: '#475569'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      transition: background-color 0.3s ease;
+    }
+
+    .dark body {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    }
+
+    .card {
+      transition: all 0.3s ease;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      background-color: #ffffff;
+    }
+
+    .dark .card {
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      background-color: #1e293b;
+    }
+
+    .card:hover {
+      box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.2);
+      transform: translateY(-3px);
+    }
+
+    .dark .card:hover {
+      box-shadow: 0 10px 25px -5px rgba(96, 165, 250, 0.3);
+    }
+
+    .progress-bar {
+      height: 8px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #10b981 0%, #3b82f6 100%);
+    }
+
+    .dark .progress-bar {
+      background: linear-gradient(90deg, #34d399 0%, #60a5fa 100%);
+    }
+
+    .section-title {
+      position: relative;
+      padding-right: 1.75rem;
+    }
+
+    .section-title::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 10px;
+      height: 10px;
+      background: #2563eb;
+      border-radius: 50%;
+    }
+
+    .dark .section-title::after {
+      background: #60a5fa;
+    }
+
+    .kpi-card {
+      border-right: 4px solid;
+      transition: all 0.3s ease;
+    }
+
+    .dark .kpi-card {
+      background-color: #1e293b;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .dark .kpi-card:hover {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 10px;
+    }
+
+    .dark .custom-scrollbar::-webkit-scrollbar-track {
+      background: #334155;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #64748b;
+    }
+
+    .animate-fade-in {
+      animation: fadeIn 0.5s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .chart-container {
+      position: relative;
+      height: 300px;
+      width: 100%;
+    }
+
+    .ar-text-spacing {
+      letter-spacing: 0;
+      word-spacing: 0;
+      line-height: 1.8;
+    }
+
+    .goal-card {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .goal-content {
+      flex-grow: 1;
+    }
+
+    .kpi-progress {
+      height: 6px;
+      border-radius: 3px;
+      margin-top: 8px;
+    }
+
+    .dark {
+      color: #f8fafc;
+    }
+
+    .dark .bg-white {
+      background-color: #1e293b;
+    }
+
+    .dark .text-gray-600 {
+      color: #94a3b8;
+    }
+
+    .dark .text-primary {
+      color: #e2e8f0;
+    }
+
+    .dark .border-gray-200 {
+      border-color: #475569;
+    }
+
+    .dark .bg-gray-100 {
+      background-color: #475569;
+      color: #f8fafc;
+    }
+
+    .dark .bg-gray-50 {
+      background-color: #374151;
+    }
+
+    /* Darker gray for summary boxes */
+    .dark .bg-blue-50 {
+      background-color: #1e3a8a;
+      border-color: #1e40af;
+    }
+
+    .dark .text-blue-800 {
+      color: #bfdbfe;
+    }
+
+    .theme-toggle {
+      position: relative;
+      width: 60px;
+      height: 30px;
+      border-radius: 15px;
+      background-color: #334155;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .dark .theme-toggle {
+      background-color: #f8fafc;
+    }
+
+    .theme-toggle-handle {
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background-color: #f8fafc;
+      transition: all 0.3s ease;
+    }
+
+    .dark .theme-toggle-handle {
+      right: calc(100% - 27px);
+      background-color: #334155;
+    }
+
+    .theme-toggle-icon {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .theme-toggle-icon.sun {
+      left: 8px;
+      color: #f59e0b;
+      opacity: 1;
+    }
+
+    .dark .theme-toggle-icon.sun {
+      opacity: 0;
+    }
+
+    .theme-toggle-icon.moon {
+      right: 8px;
+      color: #334155;
+      opacity: 0;
+    }
+
+    .dark .theme-toggle-icon.moon {
+      opacity: 1;
+    }
+
+    .dark\:bg-card:is(.dark *) {
+      background-color: rgb(41 50 65 / 89%) !important;
+    }
+
+    .goal-year {
+      background-color: #e0f2fe;
+      color: #0369a1;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .dark .goal-year {
+      background-color: #1e3a8a;
+      color: #bfdbfe;
+    }
+
+    .goal-tag {
+      background-color: #e0f2fe;
+      color: #0369a1;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      margin-left: 4px;
+    }
+
+    .dark .goal-tag {
+      background-color: #1e3a8a;
+      color: #bfdbfe;
+    }
+
+    .goal-item {
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+    }
+
+    .dark .goal-item {
+      border-bottom: 1px solid #475569;
+    }
+
+    .goal-item:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .to-blue-300 {
+      --tw-gradient-to: #2563eb var(--tw-gradient-to-position) !important
+    }
+
+    select {
+      background-position: left -3px center !important;
+    }
+
+    .print-btn {
+      background: linear-gradient(90deg, #3b82f6 0, #10b981 100%);
+      color: #fff;
+      padding: 7px 18px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      margin-bottom: 12px;
+      transition: background 0.2s;
+    }
+
+    .print-btn:hover {
+      opacity: .88;
+    }
+
+    .excel-btn {
+      background: linear-gradient(90deg, #f59e0b 0, #10b981 100%);
+      color: #fff;
+      padding: 7px 18px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      margin-bottom: 12px;
+      margin-right: 8px;
+    }
+
+    .excel-btn:hover {
+      opacity: .88;
+    }
+  </style>
+</head>
+
+<body class="bg-background font-sans p-4 md:p-8 min-h-screen">
+  <main class="max-w-7xl mx-auto space-y-8">
+
+    <header
+      class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 py-2 px-2 bg-white/70 rounded-2xl shadow-md border border-gray-100 dark:bg-card dark:border-gray-700 transition-all">
+      <div class="flex items-center gap-4 w-full md:w-auto">
+        <a href="#"
+          class="shrink-0 flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-100 to-blue-300 dark:from-blue-950 dark:to-blue-800 p-2 shadow-sm">
+          <img src="img/logoW.png" alt="شعار الجمعية"
+            class="w-24 h-24 md:w-20 md:h-20 rounded-full object-cover border-2 border-white dark:border-card shadow-lg transition-all duration-300 hover:scale-105"
+            loading="lazy">
+        </a>
+        <div class="flex flex-col justify-center">
+          <h1
+            class="text-2xl md:text-3xl font-extrabold text-primary tracking-tight ar-text-spacing dark:text-white mb-1">
+            لوحة مؤشرات الأداء الاستراتيجي لجمعية اعتدال
+          </h1>
+          <p class="mt-0.5 text-gray-600 text-sm md:text-base max-w-2xl ar-text-spacing dark:text-gray-400">منصّة شاملة
+            لتحليل مؤشرات الأداء الرئيسية (KPIs) ومتابعة الأهداف التشغيلية والاستراتيجية للجمعية</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4 mt-5 md:mt-0">
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-gray-600 dark:text-gray-400 ar-text-spacing">الوضع الليلي</span>
+          <div class="theme-toggle" id="themeToggle">
+            <div class="theme-toggle-handle"></div>
+            <span class="theme-toggle-icon sun">☀️</span>
+            <span class="theme-toggle-icon moon">🌙</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <nav
+      class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 dark:bg-card dark:border-gray-700 animate-fade-in">
+
+
+      <div class="flex flex-wrap items-center justify-center md:justify-start gap-2">
+
+        <a href="operational_performance.html" target="_blank"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition-all duration-200">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+            stroke="currentColor" class="h-5 w-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+          </svg>
+          <span>الأداء التشغيلي</span>
+        </a>
+
+        <!-- <a href="reports/quarterly_financial_report.html" target="_blank" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition-all duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.75C2.25 5.004 2.754 4.5 3.375 4.5H17.25c.621 0 1.125.504 1.125 1.125v.75M2.25 6v12c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V6M18.75 18.75v-1.875c0-.621.504-1.125 1.125-1.125h.75l-1.5-1.5L21 18.75h-.75A1.125 1.125 0 0 1 18.75 18.75Z" />
+        </svg>
+        <span>التقرير المالي الربعي</span>
+    </a>
+
+    <a href="reports/home_maintenance.html" target="_blank" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition-all duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+        </svg>
+        <span>الصيانة المنزلية</span>
+    </a>
+
+    <a href="reports/hasif_program.html" target="_blank" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition-all duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.436 60.436 0 0 0-.491 6.347A48.627 48.627 0 0 1 12 20.904a48.627 48.627 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.57 50.57 0 0 0-2.658-.813A59.905 59.905 0 0 1 12 3.493a59.902 59.902 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0 1 12 13.489a50.697 50.697 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />
+        </svg>
+        <span>برنامج حصيف</span>
+    </a>
+
+    <a href="reports/nammiha_program.html" target="_blank" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition-all duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 10.5l4.5 4.5L21.75 6" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 18H14.25a.75.75 0 0 0-.75.75v.008c0 .414.336.75.75.75h7.5a.75.75 0 0 0 .75-.75v-7.5a.75.75 0 0 0-.75-.75h-.008a.75.75 0 0 0-.75.75v7.5Z" />
+        </svg>
+        <span>برنامج نميها</span>
+    </a>
+
+    <a href="reports/donor_communication_report.html" target="_blank" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition-all duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0-9.092-9.093c-2.48 0-4.757 1-6.44 2.66A9.03 9.03 0 0 0 1.5 18.72v.506c0 .51.41.92.92.92h15.16c.51 0 .92-.41.92-.92v-.506ZM13.56 4.86c.068.12.13.24.18.36a3.84 3.84 0 0 1-3.48 5.25c-.88.1-1.73-.2-2.39-.78a3.84 3.84 0 0 1-.8-4.28c.15-.36.33-.7.54-1a3.84 3.84 0 0 1 5.95 0ZM18.72 13.91a3.84 3.84 0 0 1-5.25-3.48c.1-.88.48-1.73 1.06-2.39a3.84 3.84 0 0 1 4.28-.8c.36.15.7.33 1 .54a3.84 3.84 0 0 1 0 5.95c-.12.06-.24.13-.36.18Z" />
+        </svg>
+        <span>تقرير التواصل مع الجهات المانحة</span>
+    </a> -->
+
+      </div>
+
+
+
+    </nav>
+    <div class="w-full">
+      <div
+        class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100 dark:bg-card dark:border-gray-700">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 w-full">
+          <select id="yearFilter"
+            class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-secondary focus:border-secondary ar-text-spacing dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all">
+            <option value="all">جميع السنوات</option>
+          </select>
+          <select id="departmentFilter"
+            class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-secondary focus:border-secondary ar-text-spacing dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all">
+            <option value="all">جميع الإدارات</option>
+          </select>
+          <select id="quarterFilter"
+            class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-secondary focus:border-secondary ar-text-spacing dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all">
+            <option value="all">جميع الأرباع</option>
+          </select>
+          <select id="strategicGoalFilter"
+            class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-secondary focus:border-secondary ar-text-spacing dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all">
+            <option value="all">جميع الأهداف الاستراتيجية</option>
+          </select>
+        </div>
+        <div class="w-full md:w-auto">
+          <button id="applyFilter"
+            class="w-full md:w-auto bg-secondary hover:bg-darkblue text-white px-6 py-2 rounded-lg transition flex items-center justify-center gap-2 ar-text-spacing dark:bg-blue-600 dark:hover:bg-blue-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd"
+                d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z"
+                clip-rule="evenodd" />
+            </svg>
+            تطبيق التصفية
+          </button>
+        </div>
+      </div>
+    </div>
+    <section>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8" id="kpiIndicators"></div>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div
+        class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 animate-fade-in dark:bg-card dark:border-gray-700">
+        <div class="flex justify-between items-center mb-5">
+          <h2
+            class="text-xl font-bold text-primary flex items-center gap-3 section-title ar-text-spacing dark:text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-teal-500 dark:text-teal-400" fill="none"
+              viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            الأداء السنوي
+          </h2>
+          <div class="flex gap-2">
+            <button
+              class="chart-toggle bg-gray-100 px-3 py-1 rounded-lg text-sm ar-text-spacing dark:bg-gray-700 dark:text-white"
+              data-chart="annual" data-type="bar">أعمدة</button>
+            <button
+              class="chart-toggle bg-gray-100 px-3 py-1 rounded-lg text-sm ar-text-spacing dark:bg-gray-700 dark:text-white"
+              data-chart="annual" data-type="line">خطي</button>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="annualChart"></canvas>
+        </div>
+      </div>
+      <div
+        class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 animate-fade-in dark:bg-card dark:border-gray-700">
+        <div class="flex justify-between items-center mb-5">
+          <h2
+            class="text-xl font-bold text-primary flex items-center gap-3 section-title ar-text-spacing dark:text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-500 dark:text-purple-400" fill="none"
+              viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+            </svg>
+            توزيع الأهداف
+          </h2>
+          <div class="flex gap-2">
+            <button
+              class="chart-toggle bg-gray-100 px-3 py-1 rounded-lg text-sm ar-text-spacing dark:bg-gray-700 dark:text-white"
+              data-chart="distribution" data-type="doughnut">دائري</button>
+            <button
+              class="chart-toggle bg-gray-100 px-3 py-1 rounded-lg text-sm ar-text-spacing dark:bg-gray-700 dark:text-white"
+              data-chart="distribution" data-type="pie">فطيرة</button>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="distributionChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-8">
+      <h2
+        class="text-2xl font-bold text-primary mb-6 flex items-center gap-3 section-title ar-text-spacing dark:text-white">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-secondary dark:text-blue-400" fill="none"
+          viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+        الأهداف الاستراتيجية والتشغيلية
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="goalsContainer">
+        <template id="goalCardTemplate">
+          <article class="card bg-white rounded-2xl p-6 flex flex-col goal-card animate-fade-in dark:bg-card">
+            <div class="flex justify-between items-start mb-4">
+              <div>
+                <h4 class="text-md font-bold text-secondary m-[9px] section-title ar-text-spacing dark:text-blue-400">
+                </h4>
+                <span class="goal-year mt-2"></span>
+              </div>
+              <span
+                class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs ar-text-spacing dark:bg-gray-700 dark:text-gray-300">استراتيجي</span>
+            </div>
+            <div class="space-y-4 goal-content"></div>
+            <div class="mt-auto pt-4 border-t border-gray-100 dark:border-gray-600">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-sm text-gray-600 ar-text-spacing dark:text-gray-400">نسبة الإنجاز الكلّية لجميع مؤشرات
+                  الهدف</span>
+                <span class="text-lg font-bold achieved-percent ar-text-spacing"></span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                <div class="progress-bar h-2.5 rounded-full" style="width: 0%"></div>
+              </div>
+            </div>
+
+
+          </article>
+        </template>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div
+        class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 animate-fade-in dark:bg-card dark:border-gray-700">
+        <div class="flex justify-between items-center mb-5">
+          <h2
+            class="text-xl font-bold text-primary flex items-center gap-3 section-title ar-text-spacing dark:text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent dark:text-green-400" fill="none"
+              viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            نسبة الإنجاز حسب الربع %
+          </h2>
+          <div class="flex gap-2">
+            <button
+              class="chart-toggle bg-gray-100 px-3 py-1 rounded-lg text-sm ar-text-spacing dark:bg-gray-700 dark:text-white"
+              data-chart="quarterly" data-type="bar">أعمدة</button>
+            <button
+              class="chart-toggle bg-gray-100 px-3 py-1 rounded-lg text-sm ar-text-spacing dark:bg-gray-700 dark:text-white"
+              data-chart="quarterly" data-type="line">خطي</button>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="quarterlyChart"></canvas>
+        </div>
+      </div>
+      <div
+        class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 animate-fade-in dark:bg-card dark:border-gray-700">
+        <div class="flex justify-between items-center mb-5">
+          <h2
+            class="text-xl font-bold text-primary flex items-center gap-3 section-title ar-text-spacing dark:text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-warning dark:text-yellow-400" fill="none"
+              viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            نسبة الإنجاز حسب الإدارة %
+          </h2>
+          <div class="flex gap-2">
+            <button
+              class="chart-toggle bg-gray-100 px-3 py-1 rounded-lg text-sm ar-text-spacing dark:bg-gray-700 dark:text-white"
+              data-chart="department" data-type="bar">أعمدة</button>
+            <button
+              class="chart-toggle bg-gray-100 px-3 py-1 rounded-lg text-sm ar-text-spacing dark:bg-gray-700 dark:text-white"
+              data-chart="department" data-type="radar">رادار</button>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="departmentChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-8">
+      <h2
+        class="text-2xl font-bold text-primary mb-6 flex items-center gap-3 section-title ar-text-spacing dark:text-white">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-teal-500 dark:text-teal-400" fill="none"
+          viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        التقارير التحليلية
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <article
+          class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 animate-fade-in dark:bg-card dark:border-gray-700">
+          <h3
+            class="text-xl font-bold text-primary mb-4 border-b border-gray-200 pb-3 flex items-center gap-3 ar-text-spacing dark:text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-secondary dark:text-blue-400" fill="none"
+              viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+            تقرير الأداء التفصيلي
+          </h3>
+          <div id="performanceReport"
+            class="space-y-4 max-h-96 overflow-y-auto pr-3 custom-scrollbar ar-text-spacing dark:text-gray-300"></div>
+        </article>
+        <article
+          class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 animate-fade-in dark:bg-card dark:border-gray-700">
+          <h3
+            class="text-xl font-bold text-primary mb-4 border-b border-gray-200 pb-3 flex items-center gap-3 ar-text-spacing dark:text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent dark:text-green-400" fill="none"
+              viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            ملخص الأداء
+          </h3>
+          <div class="space-y-4 max-h-96 overflow-y-auto pr-3 custom-scrollbar ar-text-spacing dark:text-gray-300">
+            <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 dark:bg-blue-900 dark:border-blue-800">
+              <h4 class="font-bold text-blue-800 mb-2 ar-text-spacing dark:text-blue-200">نسبة الإنجاز الكلية</h4>
+              <div class="flex items-center justify-between">
+                <span class="text-3xl font-bold text-primary dark:text-white" id="totalAchievementPercent">0%</span>
+                <div class="w-1/2 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                  <div id="totalAchievementBar" class="h-2.5 rounded-full bg-gradient-to-r from-blue-500 to-green-500"
+                    style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+            <div class="bg-white border border-gray-200 rounded-lg p-4 dark:bg-gray-700 dark:border-gray-600">
+              <h4 class="font-bold text-primary mb-3 border-b border-gray-200 pb-2 ar-text-spacing dark:text-white">
+                الأهداف الاستراتيجية</h4>
+              <ul id="strategicSummary" class="space-y-2 text-sm text-gray-700 ar-text-spacing dark:text-gray-300"></ul>
+            </div>
+            <div class="bg-white border border-gray-200 rounded-lg p-4 dark:bg-gray-700 dark:border-gray-600">
+              <h4 class="font-bold text-primary mb-3 border-b border-gray-200 pb-2 ar-text-spacing dark:text-white">أداء
+                الإدارات</h4>
+              <ul id="departmentSummary" class="space-y-2 text-sm text-gray-700 ar-text-spacing dark:text-gray-300">
+              </ul>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <div id="quartersModal"
+      class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center p-4 z-50 transition-opacity">
+      <div
+        class="bg-white m-auto dark:bg-card dark:border dark:border-gray-700 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col animate-fade-in">
+        <div class="flex justify-between items-center p-4 border-b dark:border-gray-700">
+          <h3 id="modalTitle" class="text-xl font-bold text-primary dark:text-white">مقارنة أداء الأرباع</h3>
+          <button id="closeModalBtn"
+            class="text-3xl font-light text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition">&times;</button>
+        </div>
+        <div id="modalChartContainer" class="p-4 md:p-6 overflow-y-auto custom-scrollbar">
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
+
+
+
+  <script>
+    // =========================================================
+    // SCRIPT: CLIENT-SIDE (API-DRIVEN)
+    // =========================================================
+
+    // متغيرات عامة
+    let charts = { annual: null, quarterly: null, department: null, distribution: null };
+    let modalCharts = []; // لتخزين الرسوم البيانية في المودال
+    let allInitialData = null; // لتخزين كل البيانات الأولية (غير مفلترة)
+    let filteredData = []; // لتخزين الأهداف الاستراتيجية المفلترة
+    let dashboardStats = {}; // لتخزين الإحصائيات المحسوبة (للرسوم البيانية)
+
+    // عناصر HTML
+    const goalsContainer = document.getElementById("goalsContainer");
+    const template = document.getElementById("goalCardTemplate");
+    const kpiIndicators = document.getElementById("kpiIndicators");
+    const yearFilter = document.getElementById("yearFilter");
+    const departmentFilter = document.getElementById("departmentFilter");
+    const quarterFilter = document.getElementById("quarterFilter");
+    const strategicGoalFilter = document.getElementById("strategicGoalFilter");
+    const applyFilter = document.getElementById("applyFilter");
+    const chartToggles = document.querySelectorAll(".chart-toggle");
+    const totalAchievementPercent = document.getElementById("totalAchievementPercent");
+    const totalAchievementBar = document.getElementById("totalAchievementBar");
+    const themeToggle = document.getElementById("themeToggle");
+    const departmentSummary = document.getElementById("departmentSummary");
+    const performanceReport = document.getElementById("performanceReport");
+    const strategicSummary = document.getElementById("strategicSummary");
+
+    // عناصر المودال
+    const quartersModal = document.getElementById('quartersModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const modalChartContainer = document.getElementById('modalChartContainer');
+    const modalTitle = document.getElementById('modalTitle');
+
+
+    // عند تحميل الصفحة
+    document.addEventListener('DOMContentLoaded', function () {
+      // 1. تحقق من الوضع الليلي
+      if (localStorage.getItem('darkMode') === 'enabled') {
+        document.documentElement.classList.add('dark');
+      }
+
+      // 2. إضافة مستمعي الأحداث
+      addEventListeners();
+
+      // 3. جلب البيانات الأولية وتعبئة الفلاتر (مرة واحدة)
+      loadInitialData();
+    });
+
+    /**
+     * دالة رئيسية لجلب كل بيانات اللوحة من الخادم (مرة واحدة)
+     */
+    async function loadInitialData() {
+      // TODO: إظهار مؤشر تحميل شامل
+      try {
+        // 1. جلب كل البيانات من السيرفر
+        const response = await fetch('https://services.etedal.org.sa/api/General/GetDashboardData');
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("خطأ من السيرفر:", errorText);
+          throw new Error(`خطأ في الشبكة: ${response.statusText}`);
+        }
+
+        const rawData = await response.json();
+        // 2. "تنظيف" البيانات من خصائص $id و $values
+        allInitialData = normalizeData(rawData);
+
+        // 3. إضافة اسم الإدارة لكل مؤشر تشغيلي لتسهيل الفلترة
+        allInitialData.operationalGoals.forEach(op => {
+          op.departmentName = allInitialData.departmentsMap[op.departmentId] || 'غير محدد';
+        });
+
+        // 4. تعبئة قوائم الفلاتر بناءً على البيانات الكاملة
+        populateFilters(allInitialData);
+
+        // 5. تطبيق الفلترة الافتراضية ("عرض الكل") ورسم اللوحة
+        applyFilters();
+
+      } catch (error) {
+        console.error("حدث خطأ أثناء جلب بيانات اللوحة:", error);
+        // TODO: إظهار رسالة خطأ للمستخدم
+      } finally {
+        // TODO: إخفاء مؤشر التحميل الشامل
+      }
+    }
+
+    /**
+     * تعبئة قوائم الفلاتر بالبيانات القادمة من الخادم (تُستدعى مرة واحدة)
+     * @param {object} data - كائن allInitialData الكامل
+     */
+    function populateFilters(data) {
+      const yearsSet = new Set();
+      const quartersSet = new Set();
+      const departmentsSet = new Set();
+
+      // استخلاص الأعوام والأرباع والإدارات من البيانات الكاملة
+      data.operationalGoals.forEach(op => {
+        departmentsSet.add(op.departmentName);
+        op.progress.forEach(p => {
+          if (p.year) yearsSet.add(String(p.year));
+          if (p.quarter) quartersSet.add(p.quarter);
+        });
+      });
+
+      // تعبئة السنوات
+      yearFilter.innerHTML = '<option value="all">جميع السنوات</option>';
+      Array.from(yearsSet).sort((a, b) => b - a).forEach(year => {
+        yearFilter.innerHTML += `<option value="${year}">${year}</option>`;
+      });
+
+      // تعبئة الإدارات
+      departmentFilter.innerHTML = '<option value="all">جميع الإدارات</option>';
+      Array.from(departmentsSet).sort().forEach(dep => {
+        departmentFilter.innerHTML += `<option value="${dep}">${dep}</option>`;
+      });
+
+      // تعبئة الأرباع
+      quarterFilter.innerHTML = '<option value="all">جميع الأرباع</option>';
+      Array.from(quartersSet).sort((a, b) => a.localeCompare(b)).forEach(q => {
+        quarterFilter.innerHTML += `<option value="${q}">${q}</option>`;
+      });
+
+      // تعبئة الأهداف الاستراتيجية
+      strategicGoalFilter.innerHTML = '<option value="all">جميع الأهداف الاستراتيجية</option>';
+      data.strategicGoals.forEach(goal => {
+        strategicGoalFilter.innerHTML += `<option value="${goal.id}">${goal.title}</option>`;
+      });
+    }
+
+    /**
+     * دالة مجمعة لإضافة كل مستمعي الأحداث
+     */
+    function addEventListeners() {
+      // *** تعديل: زر تطبيق الفلترة أصبح ينفذ الدالة محلياً ***
+      applyFilter.addEventListener('click', applyFilters);
+
+      // أزرار تبديل نوع الرسم البياني
+      chartToggles.forEach(btn => {
+        btn.addEventListener('click', function () {
+          const chartName = this.getAttribute('data-chart');
+          const chartType = this.getAttribute('data-type');
+          toggleChartType(chartName, chartType);
+
+          document.querySelectorAll(`.chart-toggle[data-chart="${chartName}"]`).forEach(b => {
+            b.classList.remove('bg-blue-100', 'text-blue-800');
+            b.classList.add('bg-gray-100');
+          });
+          this.classList.remove('bg-gray-100');
+          this.classList.add('bg-blue-100', 'text-blue-800');
+        });
+      });
+
+      // زر الوضع الليلي
+      themeToggle.addEventListener('click', toggleDarkMode);
+
+      // فتح مودال الأرباع (باستخدام تفويض الأحداث)
+      goalsContainer.addEventListener('click', function (event) {
+        const button = event.target.closest('.show-quarters-chart-btn');
+        if (button) {
+          const opId = button.dataset.opId;
+          if (opId) {
+            // *** تعديل: الدالة لم تعد تجلب بيانات، بل تبحث محلياً ***
+            showQuartersComparisonModal(opId);
+          }
+        }
+      });
+
+      // إغلاق المودال
+      closeModalBtn.addEventListener('click', () => quartersModal.classList.add('hidden'));
+      quartersModal.addEventListener('click', (event) => {
+        if (event.target === quartersModal) {
+          quartersModal.classList.add('hidden');
+        }
+      });
+    }
+
+    /**
+     * تبديل الوضع الليلي
+     */
+    function toggleDarkMode() {
+      if (document.documentElement.classList.contains('dark')) {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('darkMode', 'disabled');
+      } else {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('darkMode', 'enabled');
+      }
+      // إعادة رسم اللوحة بالبيانات المفلترة والإحصائيات الحالية
+      if (filteredData && dashboardStats) {
+        renderDashboard(filteredData, dashboardStats);
+      }
+    }
+
+    /**
+     * تبديل نوع الرسم البياني
+     * @param {string} chartName - اسم الرسم (annual, quarterly, etc.)
+     * @param {string} chartType - النوع الجديد (bar, line, etc.)
+     */
+    function toggleChartType(chartName, chartType) {
+      if (!dashboardStats) return;
+
+      const isDark = document.documentElement.classList.contains('dark');
+      const stats = dashboardStats; // استخدم الإحصائيات المحسوبة
+
+      if (chartName == 'annual') {
+        renderAnnualChart(chartType, isDark, stats.yearPercent);
+      } else if (chartName == 'quarterly') {
+        renderQuarterlyChart(chartType, isDark, stats.quarterPercent);
+      } else if (chartName == 'department') {
+        renderDepartmentChart(chartType, isDark, stats.departmentPercent, stats.departmentCount);
+      } else if (chartName == 'distribution') {
+        renderDistributionChart(chartType, isDark, stats.departmentCount);
+      }
+    }
+
+
+    // =========================================================
+    // SCRIPT: CLIENT-SIDE FILTERING & CALCULATION
+    // =========================================================
+
+    /**
+     * *** دالة جديدة ***
+     * هذه هي الدالة الأساسية لحساب النسبة المئوية، تم إرجاعها من الخادم.
+     * @param {object} op - الهدف التشغيلي (يحتوي على .progress المفلتر)
+     * @param {boolean} capAt100 - هل يتم وضع سقف 100% للنتيجة
+     * @returns {number} - النسبة المحسوبة
+     */
+    function calculateStandardizedPercentage(op, capAt100 = false) {
+      if (!op || !op.progress || op.progress.length === 0) {
+        return 0;
+      }
+
+      let totalAchieved = 0;
+      let totalTarget = 0;
+      let isPercentType = false;
+      let hasValidProgress = false;
+      // جلب الخريطة العامة
+      const typesMap = allInitialData.achievementValueTypesMap;
+
+      op.progress.forEach(row => {
+        // السيرفر يرسل (target, achieved) كـ object, يجب تحويلها
+        const targetVal = Number(row.target);
+        const achievedVal = row.weeklyTotalAchieved !== undefined ? Number(row.weeklyTotalAchieved) : Number(row.achieved) || 0;
+
+        if (!isNaN(targetVal)) { // التأكد أن المستهدف هو رقم صالح
+          hasValidProgress = true;
+          totalTarget += targetVal;
+          totalAchieved += achievedVal;
+          const typeName = typesMap[row.achievedTypeId] || row.achievedType || '';
+          if (typeName === 'نسبة مئوية') {
+            isPercentType = true;
+          }
+        }
+      });
+
+      if (!hasValidProgress) return 0;
+
+      let finalPercent;
+
+      if (op.isReverse) {
+        // --- منطق المؤشرات العكسية ---
+        if (isPercentType) {
+          const avgAchieved = totalAchieved / op.progress.length;
+          finalPercent = Math.max(0, 100 - avgAchieved);
+        } else {
+          if (totalTarget === 0) {
+            finalPercent = (totalAchieved > 0) ? 0 : 100;
+          } else {
+            if (totalAchieved <= totalTarget) {
+              finalPercent = 100;
+            } else {
+              const excess = totalAchieved - totalTarget;
+              const penaltyPercentage = (excess / totalTarget) * 100;
+              finalPercent = Math.max(0, 100 - penaltyPercentage);
+            }
+          }
+        }
+      } else {
+        // --- منطق المؤشرات العادية ---
+        if (isPercentType) {
+          finalPercent = totalAchieved / op.progress.length;
+        } else {
+          if (totalTarget === 0) {
+            finalPercent = (totalAchieved >= 0) ? 100 : 0;
+          } else {
+            finalPercent = (totalAchieved / totalTarget) * 100;
+          }
+        }
+      }
+
+      // تطبيق السقف
+      const cappedPercent = Math.max(0, finalPercent);
+
+      if (capAt100) {
+        return Math.min(cappedPercent, 100);
+      }
+
+      return Math.min(cappedPercent, 500); // السقف الأعلى للعرض
+    }
+
+    /**
+     * *** تعديل: دالة الفلترة الرئيسية (تعمل محلياً) ***
+     * تطبق الفلاتر على البيانات الكاملة وتطلق إعادة الرسم
+     */
+    function applyFilters() {
+      if (!allInitialData) return; // البيانات لم تُحمّل بعد
+
+      const selectedYear = yearFilter.value;
+      const selectedDeptName = departmentFilter.value;
+      const selectedQuarter = quarterFilter.value;
+      const selectedStrategicGoal = strategicGoalFilter.value;
+      const settings = allInitialData.settings;
+
+      // 1. فلترة المؤشرات التشغيلية
+      const filteredOpGoals = allInitialData.operationalGoals.map(op => {
+        // التحقق من تطابق الإدارة
+        const deptMatch = selectedDeptName === "all" || op.departmentName === selectedDeptName;
+
+        // التحقق من الوزن (نفس منطق السيرفر)
+        const isValidOp = !op.excludeFromCalculation && op.weight > 0;
+        const weightMatch = (selectedStrategicGoal !== "all") || settings.showUnweighted || isValidOp;
+
+        if (!deptMatch || !weightMatch) {
+          return null; // هذا المؤشر خارج الفلتر
+        }
+
+        // 2. فلترة مصفوفة التقدم "الداخلية"
+        const newProgress = op.progress.filter(p =>
+          (selectedYear === "all" || String(p.year) === selectedYear) &&
+          (selectedQuarter === "all" || p.quarter === selectedQuarter)
+        );
+
+        if (newProgress.length === 0) {
+          return null; // المؤشر موجود لكن لا بيانات له في هذا النطاق
+        }
+
+        // إرجاع نسخة جديدة من المؤشر تحتوي فقط على التقدم المفلتر
+        return { ...op, progress: newProgress };
+
+      }).filter(Boolean); // إزالة القيم الـ null
+
+      // 3. فلترة الأهداف الاستراتيجية
+      // (يظهر الهدف فقط إذا كان يطابق الفلتر + لديه مؤشرات ظاهرة)
+      const visibleOpGoalIds = new Set(filteredOpGoals.map(op => op.strategicGoalId));
+
+      filteredData = allInitialData.strategicGoals.map(sg => {
+        const goalMatch = selectedStrategicGoal === "all" || sg.id === selectedStrategicGoal;
+
+        if (!goalMatch || !visibleOpGoalIds.has(sg.id)) {
+          return null;
+        }
+
+        // إرجاع نسخة جديدة من الهدف الاستراتيجي تحتوي فقط على المؤشرات المفلترة
+        return {
+          ...sg,
+          operationalGoals: filteredOpGoals.filter(op => op.strategicGoalId === sg.id)
+        };
+      }).filter(Boolean); // إزالة القيم الـ null
+
+      // 4. حساب الإحصائيات وإعادة رسم اللوحة
+      calculateAndRenderDashboard(filteredData);
+    }
+
+    /**
+     * *** دالة جديدة ***
+     * تحسب إحصائيات اللوحة (للرسوم البيانية والمؤشرات) بناءً على البيانات المفلترة
+     * @param {Array} dataForRendering - مصفوفة الأهداف الاستراتيجية المفلترة
+     */
+    function calculateAndRenderDashboard(dataForRendering) {
+      let yearPercent = {}, quarterPercent = {}, departmentPercent = {}, departmentCount = {};
+      let totalWeighted = 0, totalWeightAll = 0;
+      let totalIndicators = 0, completedIndicators = 0;
+
+      dataForRendering.forEach(goal => {
+        goal.operationalGoals.forEach(op => {
+          totalIndicators++;
+          // حساب النسبة بناءً على مصفوفة .progress (المفلترة مسبقاً)
+          const percent = calculateStandardizedPercentage(op, false);
+          if (percent >= 100) completedIndicators++;
+
+          const isValidOp = !op.excludeFromCalculation && op.weight > 0;
+          if (!isValidOp) return;
+
+          const percentCapped = calculateStandardizedPercentage(op, true); // نسبة مسقفة للمتوسطات
+          const opWeight = op.weight || 1;
+
+          totalWeighted += percentCapped * opWeight;
+          totalWeightAll += opWeight;
+
+          // تجميع بيانات الرسوم البيانية
+          op.progress.forEach(p => {
+            const year = String(p.year);
+            const quarter = p.quarter;
+
+            if (year) {
+              if (!yearPercent[year]) yearPercent[year] = { sum: 0, w: 0 };
+              yearPercent[year].sum += percentCapped * opWeight;
+              yearPercent[year].w += opWeight;
+            }
+            if (quarter) {
+              if (!quarterPercent[quarter]) quarterPercent[quarter] = { sum: 0, w: 0 };
+              quarterPercent[quarter].sum += percentCapped * opWeight;
+              quarterPercent[quarter].w += opWeight;
+            }
+          });
+
+          // تجميع بيانات الإدارات
+          const depName = op.departmentName;
+          if (!departmentPercent[depName]) departmentPercent[depName] = { sum: 0, w: 0 };
+          departmentPercent[depName].sum += percentCapped * opWeight;
+          departmentPercent[depName].w += opWeight;
+          departmentCount[depName] = (departmentCount[depName] || 0) + 1;
+        });
+      });
+
+      // تخزين الإحصائيات المحسوبة لاستخدامها في تبديل الرسوم البيانية
+      dashboardStats = {
+        yearPercent,
+        quarterPercent,
+        departmentPercent,
+        departmentCount,
+        kpiStats: {
+          totalIndicators: totalIndicators,
+          completedIndicators: completedIndicators,
+          incompleteIndicators: totalIndicators - completedIndicators,
+          avgAchievement: (totalWeightAll > 0 ? (totalWeighted / totalWeightAll) : 0).toFixed(1)
+        },
+        totalAchievementPercent: (totalWeightAll > 0 ? (totalWeighted / totalWeightAll) : 0)
+      };
+
+      // إطلاق عملية الرسم
+      renderDashboard(dataForRendering, dashboardStats);
+    }
+
+
+    /**
+     * *** تعديل: عرض نافذة الأرباع (بدون fetch) ***
+     * @param {string} opId - معرّف المؤشر التشغيلي
+     */
+    function showQuartersComparisonModal(opId) {
+      modalCharts.forEach(chart => chart.destroy());
+      modalCharts = [];
+      modalChartContainer.innerHTML = ''; // إفراغ
+
+      // 1. إيجاد المؤشر الأصلي من البيانات الكاملة
+      const op = allInitialData.operationalGoals.find(o => o.id === opId);
+      if (!op) {
+        modalChartContainer.innerHTML = `<p class="text-center text-red-500 py-8">خطأ: لم يتم العثور على المؤشر.</p>`;
+        quartersModal.classList.remove('hidden');
+        return;
+      }
+
+      modalTitle.textContent = `مقارنة أداء الأرباع لـ: ${op.indicator}`;
+
+      // 2. تجميع مصفوفة التقدم "الكاملة" حسب السنة
+      const progressByYear = op.progress.reduce((acc, current) => {
+        const year = String(current.year);
+        if (year) {
+          if (!acc[year]) acc[year] = [];
+          acc[year].push(current);
+        }
+        return acc;
+      }, {});
+
+      const sortedYears = Object.keys(progressByYear).sort((a, b) => b - a);
+
+      if (sortedYears.length === 0) {
+        modalChartContainer.innerHTML = `<p class="text-center text-gray-500 py-8">لا توجد بيانات أرباع لعرضها لهذا المؤشر.</p>`;
+        quartersModal.classList.remove('hidden');
+        return;
+      }
+
+      const quarterOrder = { 'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4 };
+      const typesMap = allInitialData.achievementValueTypesMap;
+      const isDark = document.documentElement.classList.contains('dark');
+      const textColor = isDark ? '#f8fafc' : '#334155';
+      const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
+      // 3. عرض الرسوم البيانية لكل سنة
+      sortedYears.forEach(year => {
+        const yearData = progressByYear[year];
+
+        // فرز الأرباع
+        yearData.sort((a, b) => (quarterOrder[a.quarter] || 99) - (quarterOrder[b.quarter] || 99));
+
+        const chartData = {
+          labels: [], percentages: [], targets: [], achieveds: [], types: []
+        };
+
+        yearData.forEach(p => {
+          // حساب النسبة لكل ربع على حدة
+          let percent = calculateStandardizedPercentage({ progress: [p], isReverse: op.isReverse }, false);
+
+          chartData.labels.push(p.quarter || 'N/A');
+          chartData.percentages.push(percent.toFixed(1));
+          chartData.targets.push(Number(p.target) || 0);
+          chartData.achieveds.push((p.weeklyTotalAchieved !== undefined ? Number(p.weeklyTotalAchieved) : Number(p.achieved) || 0));
+          chartData.types.push(typesMap[p.achievedTypeId] || p.achievedType || 'رقم');
+        });
+
+        const yearChartContainer = document.createElement('div');
+        yearChartContainer.className = 'mb-8 animate-fade-in';
+        // (الكود لإنشاء الجدول والرسم البياني)
+        yearChartContainer.innerHTML = `
+            <h4 class="text-lg font-bold text-center mb-2 dark:text-white">أداء عام ${year} ${op.isReverse ? ' (مؤشر عكسي ↪️)' : ''}</h4>
+            <div class="chart-container" style="height: 250px;"><canvas></canvas></div>
+            <div class="mt-4 overflow-x-auto">
+                <table class="w-full text-sm text-right text-gray-500 dark:text-gray-400">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 rounded-r-lg">الربع</th>
+                            <th scope="col" class="px-6 py-3">المستهدف</th>
+                            <th scope="col" class="px-6 py-3">المنجز</th>
+                            <th scope="col" class="px-6 py-3 rounded-l-lg">نسبة الإنجاز</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        `;
+        modalChartContainer.appendChild(yearChartContainer);
+
+        const tableBody = yearChartContainer.querySelector('tbody');
+        chartData.labels.forEach((label, index) => {
+          const isPercentType = chartData.types[index] === 'نسبة مئوية';
+          const percentForColor = parseFloat(chartData.percentages[index]);
+          const row = `
+                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                    <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">${label}</th>
+                    <td class="px-6 py-4">${chartData.targets[index].toLocaleString()}${isPercentType ? '%' : ''}</td>
+                    <td class="px-6 py-4">${chartData.achieveds[index].toLocaleString()}${isPercentType ? '%' : ''}</td>
+                    <td class="px-6 py-4 font-bold ${getTextColorClass(percentForColor, op.isReverse)}">${percentForColor}%</td>
+                </tr>
+            `;
+          tableBody.innerHTML += row;
+        });
+
+        // إنشاء الرسم البياني للنافذة
+        const ctx = yearChartContainer.querySelector('canvas').getContext('2d');
+        const newChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: chartData.labels,
+            datasets: [{
+              label: 'نسبة الإنجاز %',
+              data: chartData.percentages,
+              backgroundColor: '#2563eb', borderColor: '#1e40af', borderWidth: 1, borderRadius: 5,
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              tooltip: {
+                rtl: true, bodyFont: { family: 'Cairo', size: 12 },
+                callbacks: {
+                  footer: function (tooltipItems) {
+                    const index = tooltipItems[0].dataIndex;
+                    const isPercentType = chartData.types[index] === 'نسبة مئوية';
+                    const target = `المستهدف: ${chartData.targets[index].toLocaleString()}${isPercentType ? '%' : ''}`;
+                    const achieved = `المنجز: ${chartData.achieveds[index].toLocaleString()}${isPercentType ? '%' : ''}`;
+                    return `${target}\n${achieved}`;
+                  }
+                }
+              },
+              legend: { display: false }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: { callback: function (value) { return value + '%'; }, color: textColor },
+                grid: { color: gridColor }
+              },
+              x: { ticks: { color: textColor }, grid: { display: false } }
+            }
+          }
+        });
+        modalCharts.push(newChart);
+      });
+
+      quartersModal.classList.remove('hidden');
+    }
+
+
+
+    // =========================================================
+    // SCRIPT: RENDERING FUNCTIONS (معظمها بدون تغيير)
+    // =========================================================
+
+    /**
+     * الدالة الرئيسية لرسم اللوحة
+     * @param {Array} strategicGoals - الأهداف المفلترة
+     * @param {object} stats - الإحصائيات المحسوبة
+     */
+    function renderDashboard(strategicGoals, stats) {
+      if (!strategicGoals || !stats) return;
+
+      // تدمير الرسوم البيانية القديمة قبل إعادة الرسم
+      Object.values(charts).forEach(chart => {
+        if (chart) chart.destroy();
+      });
+
+      renderGoalCards(strategicGoals); // ترسم البطاقات من البيانات المفلترة
+      renderPerformanceReport(strategicGoals);
+      renderStrategicSummary(strategicGoals);
+      renderDepartmentSummary(stats.departmentPercent || {}); // ترسم من الإحصائيات
+      renderTotalAchievement(stats.totalAchievementPercent || 0);
+      renderKPIs(stats.kpiStats || {});
+      renderCharts(stats); // ترسم من الإحصائيات
+    }
+
+    /**
+     * رسم بطاقات الأهداف الاستراتيجية والتشغيلية
+     * @param {Array} strategicGoals - مصفوفة الأهداف الاستراتيجية (مفلترة)
+     */
+    function renderGoalCards(strategicGoals) {
+      goalsContainer.innerHTML = '';
+      strategicGoals.forEach(goal => {
+        const card = template.content.cloneNode(true);
+        const cardElem = card.querySelector("article.card");
+
+        cardElem.querySelector("h4").textContent = goal.title;
+
+        const opsContainer = cardElem.querySelector("div.space-y-4");
+        let goalYearsSet = new Set(); // لجمع السنوات النشطة في هذا الهدف
+
+        goal.operationalGoals.forEach(op => {
+          // op.progress هي مصفوفة مفلترة وجاهزة
+          let totalAchieved = 0;
+          let totalTarget = 0;
+          const firstProgress = op.progress.length > 0 ? op.progress[0] : null;
+          let commonAchievedType = firstProgress ? (allInitialData.achievementValueTypesMap[firstProgress.achievedTypeId] || firstProgress.achievedType || '') : '';
+
+          let yearsQuarters = {}; // لتجميع وسوم السنوات والأرباع
+
+          op.progress.forEach(p => {
+            totalAchieved += (p.weeklyTotalAchieved !== undefined ? Number(p.weeklyTotalAchieved) : Number(p.achieved) || 0);
+            totalTarget += Number(p.target) || 0;
+
+            const yearStr = String(p.year);
+            goalYearsSet.add(yearStr);
+            if (!yearsQuarters[yearStr]) yearsQuarters[yearStr] = new Set();
+            if (p.quarter) yearsQuarters[yearStr].add(p.quarter);
+          });
+
+          // حساب النسبة بناءً على التقدم المفلتر
+          const overallPercentage = calculateStandardizedPercentage(op, false);
+          const achievementPercentForBar = Math.min(100, overallPercentage);
+          const overallColorClass = getTextColorClass(overallPercentage, op.isReverse);
+          const barColorClass = getProgressBarColorClass(overallPercentage, op.isReverse);
+
+          // إنشاء وسوم السنوات والأرباع
+          const tagsHtml = Object.keys(yearsQuarters).sort().map(year => {
+            let quartersArr = Array.from(yearsQuarters[year]).sort((a, b) => a.localeCompare(b)).map(q => `${q}`);
+            let quartersTag = quartersArr.length > 0 ? `<span class="goal-tag">${quartersArr.join('، ')}</span>` : '';
+            return `<span class="goal-tag bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200">${year}</span> ${quartersTag}`;
+          }).join(' ');
+
+          const summaryHtml = `
+            <div class="grid grid-cols-3 gap-x-3 gap-y-2 text-sm mb-3 dark:text-gray-300">
+                <div class="p-2 rounded-md bg-gray-50 dark:bg-gray-700/50 text-center">
+                    <span class="block text-xs text-gray-500 dark:text-gray-400">إجمالي المستهدف</span>
+                    <strong class="text-primary dark:text-white text-lg">${totalTarget.toLocaleString()}</strong>
+                    <span class="text-xs text-gray-400 ml-1">${commonAchievedType || ''}</span>
+                </div>
+                <div class="p-2 rounded-md bg-gray-50 dark:bg-gray-700/50 text-center">
+                    <span class="block text-xs text-gray-500 dark:text-gray-400">إجمالي المنجز</span>
+                    <strong class="${overallColorClass} text-lg">${totalAchieved.toLocaleString()}</strong>
+                    <span class="text-xs text-gray-400 ml-1">${commonAchievedType || ''}</span>
+                </div>
+                <div class="p-2 rounded-md bg-gray-50 dark:bg-gray-700/50 text-center">
+                    <span class="block text-xs text-gray-500 dark:text-gray-400">نسبة الإنجاز</span>
+                    <strong class="${overallColorClass} text-lg">${overallPercentage.toFixed(1)}%</strong>
+                </div>
+            </div>
+            `;
+
+          const opDiv = document.createElement("div");
+          opDiv.className = "goal-item";
+          opDiv.innerHTML = `
+                <div class="flex justify-between items-center mb-2">
+                    <h5 class="text-lg font-bold text-primary dark:text-white flex-1">${op.indicator} ${op.isReverse ? '<span class="text-sm text-yellow-500" title="مؤشر عكسي">↪️</span>' : ''}</h5>
+                    <button title="عرض مقارنة الأرباع" class="show-quarters-chart-btn p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition flex-shrink-0 ml-2" data-op-id="${op.id}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 dark:text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex items-center flex-wrap gap-2 mb-3">
+                    <span class="goal-tag bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">${op.departmentName}</span>
+                    ${tagsHtml}
+                </div>
+                
+                ${summaryHtml}
+
+                <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden shadow-inner dark:bg-gray-600">
+                  <div class="h-2.5 rounded-full ${barColorClass}" style="width: ${achievementPercentForBar.toFixed(2)}%"></div>
+                </div>
+            `;
+          opsContainer.appendChild(opDiv);
+        });
+
+        // وضع سنوات الهدف الاستراتيجي
+        cardElem.querySelector(".goal-year").textContent = Array.from(goalYearsSet).sort().join(" , ");
+
+        // حساب النسبة الإجمالية للهدف (بناءً على المؤشرات المفلترة داخله)
+        let totalWeighted = 0, totalWeight = 0;
+        goal.operationalGoals.forEach(op => {
+          const isValidOp = !op.excludeFromCalculation && op.weight > 0;
+          if (!isValidOp) return;
+          let opPercent = calculateStandardizedPercentage(op, true); // مسقفة
+          totalWeighted += opPercent * op.weight;
+          totalWeight += op.weight;
+        });
+        const totalPercent = totalWeight > 0 ? (totalWeighted / totalWeight) : 0;
+
+        cardElem.querySelector(".achieved-percent").textContent = `${totalPercent.toFixed(1)}%`;
+        cardElem.querySelector(".progress-bar").style.width = `${Math.min(100, totalPercent)}%`;
+        cardElem.querySelector(".progress-bar").className = `progress-bar h-2.5 rounded-full ${getProgressBarColorClass(totalPercent, false)}`;
+
+        goalsContainer.appendChild(card);
+      });
+    }
+
+    /**
+     * رسم قسم التقرير التفصيلي
+     * @param {Array} strategicGoals - مصفوفة الأهداف (مفلترة)
+     */
+    function renderPerformanceReport(strategicGoals) {
+      performanceReport.innerHTML = '';
+      strategicGoals.forEach(goal => {
+        let yearsSet = new Set();
+        goal.operationalGoals.forEach(op =>
+          op.progress.forEach(p => yearsSet.add(String(p.year)))
+        );
+        const yearsString = Array.from(yearsSet).sort().join(', ');
+
+        const div = document.createElement('div');
+        div.className = "bg-gray-50 rounded-lg p-4 shadow-inner border border-gray-100 mb-4 ar-text-spacing dark:bg-gray-700 dark:border-gray-600";
+        div.innerHTML = `
+          <h3 class="font-bold text-primary mb-3 border-b border-gray-200 pb-2 dark:text-white dark:border-gray-600">
+            ${goal.title} (${yearsString})
+          </h3>
+          <ul class="space-y-2"></ul>
+        `;
+        const ul = div.querySelector('ul');
+        goal.operationalGoals.forEach(op => {
+          let percent = calculateStandardizedPercentage(op, false);
+          let colorClass = getTextColorClass(percent, op.isReverse);
+          ul.innerHTML += `
+                <li class="mb-3 pb-3 border-b border-gray-200 last:border-0 dark:border-gray-600">
+                  <div class="flex justify-between items-start mb-1">
+                    <strong class="text-primary dark:text-white">${op.indicator}</strong>
+                    <span class="text-xs bg-gray-100 px-2 py-1 rounded dark:bg-gray-600 dark:text-gray-300">${op.departmentName}</span>
+                  </div>
+                  <div class="flex justify-between text-sm text-gray-600 mb-1 dark:text-gray-400">
+                    <span class="${colorClass} font-medium">${percent.toFixed(1)}%</span>
+                  </div>
+                </li>
+            `;
+        });
+        performanceReport.appendChild(div);
+      });
+    }
+
+    /**
+     * رسم ملخص الأهداف الاستراتيجية
+     * @param {Array} strategicGoals - مصفوفة الأهداف (مفلترة)
+     */
+    function renderStrategicSummary(strategicGoals) {
+      strategicSummary.innerHTML = '';
+      strategicGoals.forEach(goal => {
+        // حساب النسبة الإجمالية للهدف (بناءً على المؤشرات المفلترة)
+        let totalWeighted = 0, totalWeight = 0;
+        goal.operationalGoals.forEach(op => {
+          const isValidOp = !op.excludeFromCalculation && op.weight > 0;
+          if (!isValidOp) return;
+          let opPercent = calculateStandardizedPercentage(op, true); // مسقفة
+          totalWeighted += opPercent * op.weight;
+          totalWeight += op.weight;
+        });
+        const percent = totalWeight > 0 ? (totalWeighted / totalWeight) : 0;
+        let colorClass = getTextColorClass(percent, false);
+
+        strategicSummary.innerHTML += `
+          <li class="flex items-center justify-between dark:text-gray-300">
+            <span>${goal.title}</span>
+            <span class="font-medium ${colorClass}">${percent.toFixed(1)}%</span>
+          </li>
+        `;
+      });
+    }
+
+    /**
+     * رسم ملخص أداء الإدارات
+     * @param {object} departmentPercent - كائن الإحصائيات المحسوب
+     */
+    function renderDepartmentSummary(departmentPercent) {
+      departmentSummary.innerHTML = '';
+      Object.entries(departmentPercent).sort(([depA], [depB]) => depA.localeCompare(depB)).forEach(([dep, obj]) => {
+        let percent = obj.w > 0 ? (obj.sum / obj.w) : 0;
+        let colorClass = getTextColorClass(percent, false);
+        departmentSummary.innerHTML += `
+          <li class="flex items-center justify-between dark:text-gray-300">
+            <span>${dep}</span>
+            <span class="font-medium ${colorClass}">${percent.toFixed(1)}%</span>
+          </li>
+        `;
+      });
+    }
+
+    /**
+     * رسم مؤشرات الأداء الرئيسية (KPIs)
+     * @param {object} kpiStats - إحصائيات المؤشرات من الخادم
+     */
+    function renderKPIs(kpiStats) {
+      kpiIndicators.innerHTML = `
+        <div class="kpi-card border-r-secondary hover:border-r-darkblue pr-4 dark:border-r-blue-400">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="bg-blue-100 p-2 rounded-full dark:bg-blue-900">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-secondary dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+            </div>
+            <h3 class="text-gray-500 text-sm ar-text-spacing dark:text-gray-400">إجمالي المؤشرات</h3>
+          </div>
+          <p class="text-3xl font-bold text-primary kpi-value dark:text-white">${kpiStats.totalIndicators || 0}</p>
+          <span>مؤشر</span>
+        </div>
+        <div class="kpi-card border-r-accent hover:border-r-teal-600 pr-4 dark:border-r-green-400">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="bg-green-100 p-2 rounded-full dark:bg-green-900">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+            </div>
+            <h3 class="text-gray-500 text-sm ar-text-spacing dark:text-gray-400">المؤشرات المنجزة</h3>
+          </div>
+          <p class="text-3xl font-bold text-primary kpi-value dark:text-white">${kpiStats.completedIndicators || 0}</p>
+          <span>مؤشر</span>
+        </div>
+        <div class="kpi-card border-r-warning hover:border-r-yellow-600 pr-4 dark:border-r-yellow-400">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="bg-yellow-100 p-2 rounded-full dark:bg-yellow-900">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-warning dark:text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+            </div>
+            <h3 class="text-gray-500 text-sm ar-text-spacing dark:text-gray-400">نسبة الإنجاز الكلي (%)</h3>
+          </div>
+          <p class="text-3xl font-bold text-primary kpi-value dark:text-white">${kpiStats.avgAchievement || 0}</p>
+          <span>%</span>
+        </div>
+        <div class="kpi-card border-r-error hover:border-r-red-600 pr-4 dark:border-r-red-400">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="bg-red-100 p-2 rounded-full dark:bg-red-900">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-error dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </div>
+            <h3 class="text-gray-500 text-sm ar-text-spacing dark:text-gray-400">المؤشرات غير المنجزة</h3>
+          </div>
+          <p class="text-3xl font-bold text-primary kpi-value dark:text-white">${kpiStats.incompleteIndicators || 0}</p>
+          <span>مؤشر</span>
+        </div>
+    `;
+    }
+
+    /**
+     * رسم نسبة الإنجاز الكلية
+     * @param {number} totalPercent - النسبة الكلية
+     */
+    function renderTotalAchievement(totalPercent) {
+      const percentStr = totalPercent.toFixed(1) + "%";
+      const percentBar = Math.max(0, Math.min(totalPercent, 100)) + "%";
+      totalAchievementPercent.textContent = percentStr;
+      totalAchievementBar.style.width = percentBar;
+    }
+
+    /**
+     * دالة رئيسية لإنشاء جميع الرسوم البيانية
+     * @param {object} stats - كائن الإحصائيات المحسوب
+     */
+    function renderCharts(stats) {
+      const isDark = document.documentElement.classList.contains('dark');
+      renderAnnualChart('bar', isDark, stats.yearPercent || {});
+      renderQuarterlyChart('bar', isDark, stats.quarterPercent || {});
+      renderDepartmentChart('bar', isDark, stats.departmentPercent || {}, stats.departmentCount || {});
+      renderDistributionChart('doughnut', isDark, stats.departmentCount || {});
+    }
+
+    function renderAnnualChart(type = 'bar', isDark, yearPercentData) {
+      const years = Object.keys(yearPercentData).sort();
+      if (charts.annual) charts.annual.destroy();
+      const ctx = document.getElementById('annualChart').getContext('2d');
+      charts.annual = new Chart(ctx, {
+        type: type,
+        data: {
+          labels: years,
+          datasets: [{
+            label: 'نسبة الإنجاز %',
+            data: years.map(year => {
+              const y = yearPercentData[year];
+              return (y.w > 0 ? (y.sum / y.w) : 0).toFixed(1);
+            }),
+            backgroundColor: '#10b981', borderColor: '#0d9488',
+            borderWidth: 2, borderRadius: 4, hoverBackgroundColor: '#059669'
+          }]
+        },
+        options: getChartOptions('الأداء السنوي', 'النسبة %', type, true, isDark)
+      });
+    }
+
+    function renderQuarterlyChart(type = 'bar', isDark, quarterPercentData) {
+      const quarters = Object.keys(quarterPercentData).sort((a, b) => a.localeCompare(b, 'ar-SA'));
+      if (charts.quarterly) charts.quarterly.destroy();
+      const ctx = document.getElementById('quarterlyChart').getContext('2d');
+      charts.quarterly = new Chart(ctx, {
+        type: type,
+        data: {
+          labels: quarters,
+          datasets: [{
+            label: 'نسبة الإنجاز %',
+            data: quarters.map(q => {
+              const obj = quarterPercentData[q];
+              return (obj.w > 0 ? (obj.sum / obj.w) : 0).toFixed(1);
+            }),
+            backgroundColor: '#3b82f6', borderRadius: 4, borderWidth: 0
+          }]
+        },
+        options: getChartOptions('نسبة الإنجاز حسب الربع', 'النسبة %', type, true, isDark)
+      });
+    }
+
+    function renderDepartmentChart(type = 'bar', isDark, departmentPercentData, departmentCountData) {
+      const departments = Object.keys(departmentPercentData).sort((a, b) => a.localeCompare(b));
+      const percentages = departments.map(dep => {
+        const obj = departmentPercentData[dep];
+        return (obj.w > 0 ? (obj.sum / obj.w) : 0).toFixed(1);
+      });
+      if (charts.department) charts.department.destroy();
+      const ctx = document.getElementById('departmentChart').getContext('2d');
+      charts.department = new Chart(ctx, {
+        type: type,
+        data: {
+          labels: departments,
+          datasets: [{
+            label: 'نسبة الإنجاز %',
+            data: percentages,
+            backgroundColor: departments.map((_, i) =>
+              percentages[i] >= 100 ? '#10b981' :
+                percentages[i] >= 70 ? '#3b82f6' :
+                  percentages[i] >= 50 ? '#f59e0b' : '#ef4444'
+            ),
+            borderRadius: 4, borderWidth: 0
+          }]
+        },
+        options: getChartOptions('نسبة الإنجاز حسب الإدارة', 'النسبة %', type, true, isDark)
+      });
+    }
+
+    function renderDistributionChart(type = 'doughnut', isDark, departmentCountData) {
+      const departments = Object.keys(departmentCountData).sort((a, b) => a.localeCompare(b));
+      if (charts.distribution) charts.distribution.destroy();
+      const ctx = document.getElementById('distributionChart').getContext('2d');
+      charts.distribution = new Chart(ctx, {
+        type: type,
+        data: {
+          labels: departments,
+          datasets: [{
+            label: 'عدد المؤشرات',
+            data: departments.map(dep => departmentCountData[dep] || 0),
+            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'],
+            borderColor: isDark ? '#1e293b' : '#fff',
+            borderWidth: 2, hoverOffset: 20
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: window.innerWidth < 768 ? 'bottom' : 'right',
+              rtl: true,
+              labels: {
+                font: { family: 'Cairo', size: 12, weight: 'bold' },
+                color: isDark ? '#f8fafc' : '#334155',
+                padding: 15, usePointStyle: true, boxWidth: 10
+              }
+            },
+            tooltip: { rtl: true, bodyFont: { family: 'Cairo', size: 14, weight: 'bold' } }
+          },
+          cutout: type === 'doughnut' ? (window.innerWidth < 768 ? '50%' : '60%') : 0,
+          animation: { animateScale: true, animateRotate: true }
+        }
+      });
+      window.addEventListener('resize', function () {
+        if (charts.distribution) charts.distribution.update();
+      });
+    }
+
+    // =========================================================
+    // SCRIPT: UTILITY FUNCTIONS (SHARED LOGIC)
+    // =========================================================
+
+    /**
+     * *** دالة معدلة: لإزالة $id و $values ***
+     * @param {object} data - البيانات "الخام" من السيرفر
+     * @returns {object} - البيانات "النظيفة"
+     */
+    function normalizeData(data) {
+      // مصفوفة لتتبع المراجع التي تمت معالجتها
+      const refs = new Map();
+
+      function dereference(obj) {
+        // 1. إذا كان $ref, ابحث عنه في الخريطة
+        if (obj && typeof obj === 'object' && obj.hasOwnProperty('$ref')) {
+          return refs.get(obj['$ref']);
+        }
+
+        // 2. إذا كان $id, سجله في الخريطة وواصل
+        if (obj && typeof obj === 'object' && obj.hasOwnProperty('$id')) {
+          const id = obj['$id'];
+          // احذف $id من الكائن الأصلي
+          delete obj['$id'];
+          // سجل الكائن (بعد حذف $id) في الخريطة
+          refs.set(id, obj);
+          // لا تتوقف، واصل معالجة الكائن
+        }
+
+        // 3. إذا كان مصفوفة (تأتي كـ $values)
+        if (obj && typeof obj === 'object' && obj.hasOwnProperty('$values')) {
+          // أعد مصفوفة جديدة بعد معالجة كل عنصر
+          return obj['$values'].map(dereference);
+        }
+
+        // 4. إذا كان كائنًا عاديًا
+        if (typeof obj === 'object' && obj !== null) {
+          // عالج كل خاصية داخل الكائن
+          for (const key in obj) {
+            obj[key] = dereference(obj[key]);
+          }
+        }
+
+        // 5. إذا كان قيمة أولية (رقم, نص, الخ)
+        return obj;
+      }
+
+      return dereference(data);
+    }
+
+
+    /**
+     * الحصول على إعدادات العرض للرسوم البيانية
+     */
+    function getChartOptions(title, yTitle, type, isPercentage = false, isDark) {
+      const textColor = isDark ? '#f8fafc' : '#334155';
+      const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            rtl: true,
+            bodyFont: { family: 'Cairo', size: 14, weight: 'bold' },
+            callbacks: {
+              label: function (context) {
+                let label = context.dataset.label || '';
+                if (label) label += ': ';
+                if (context.parsed.y !== null) {
+                  label += context.parsed.y + (isPercentage ? '%' : '');
+                }
+                return label;
+              }
+            }
+          },
+          title: { display: false }
+        },
+        scales: {
+          x: {
+            title: { display: false },
+            ticks: { font: { family: 'Cairo', size: 12 }, color: textColor },
+            grid: { display: false }
+          },
+          y: {
+            title: {
+              display: true,
+              text: yTitle,
+              font: { family: 'Cairo', size: 14, weight: 'bold' },
+              color: textColor
+            },
+            ticks: {
+              font: { family: 'Cairo', size: 12 },
+              color: textColor,
+              callback: isPercentage ? function (value) { return value + '%'; } : undefined
+            },
+            grid: { color: gridColor },
+            min: 0,
+            max: isPercentage ? 120 : undefined,
+            beginAtZero: true
+          }
+        }
+      };
+    }
+
+
+    /**
+     * دالة مساعدة لتحديد لون شريط التقدم (أعلى = أفضل دائماً)
+     */
+    function getProgressBarColorClass(percent, isReverse) {
+      if (percent >= 90) return 'bg-green-500';
+      if (percent >= 60) return 'bg-yellow-400';
+      return 'bg-red-500';
+    }
+
+    /**
+     * دالة مساعدة لتحديد لون النص (أعلى = أفضل دائماً)
+     */
+    function getTextColorClass(percent, isReverse) {
+      if (percent >= 90) return 'text-green-600 dark:text-green-400 font-bold';
+      if (percent >= 60) return 'text-yellow-700 dark:text-yellow-400 font-bold';
+      return 'text-red-600 dark:text-red-400 font-bold';
+    }
+  </script>
+
+
+
+
+
+</body>
+
+</html>
